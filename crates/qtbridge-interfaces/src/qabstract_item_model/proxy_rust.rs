@@ -235,6 +235,12 @@ where T: QAbstractItemModel {}
 
 pub type QAbstractItemModelProxyRust = GenericRustProxy<QAbstractItemModelProxyCpp, dyn QAbstractItemModelAdapter>;
 
+impl<T: QAbstractItemModelAdapter + 'static> qtbridge_runtime::qproxies::AdapterUpcast<T> for QAbstractItemModelProxyRust {
+    fn upcast(rc: std::rc::Rc<std::cell::RefCell<T>>) -> std::rc::Rc<std::cell::RefCell<dyn QAbstractItemModelAdapter>> {
+        rc
+    }
+}
+
 impl QAbstractItemModelProxyRust {
     pub fn index(&self, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex {
         call_rust_trait_impl!(self, index(row, column, parent))

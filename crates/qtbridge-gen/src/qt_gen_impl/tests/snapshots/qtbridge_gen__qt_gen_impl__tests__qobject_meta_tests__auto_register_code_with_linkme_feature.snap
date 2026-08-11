@@ -75,15 +75,6 @@ pub mod node {
     }
     impl qtbridge::qtbridge_runtime::QObjectHolder for MyStruct {
         type ProxyRust = qtbridge::qtbridge_interfaces::qobject::QObjectProxyRust;
-        fn as_adaptor_trait(
-            rust_obj_rc: std::rc::Rc<std::cell::RefCell<Self>>,
-        ) -> std::rc::Rc<
-            std::cell::RefCell<
-                <Self::ProxyRust as qtbridge::qtbridge_runtime::qproxies::QRustProxy>::AdapterType,
-            >,
-        > {
-            rust_obj_rc
-        }
     }
     impl qtbridge::qtbridge_runtime::QmlElement for MyStruct {
         const URI: &str = "qtbridge_gen";

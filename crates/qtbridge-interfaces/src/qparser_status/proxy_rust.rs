@@ -100,6 +100,12 @@ where T: QParserStatus + QObjectHolder<ProxyRust = QParserStatusProxyRust> { }
 
 pub type QParserStatusProxyRust = GenericRustProxy<QParserStatusProxyCpp, dyn QParserStatusAdapter>;
 
+impl<T: QParserStatusAdapter + 'static> qtbridge_runtime::qproxies::AdapterUpcast<T> for QParserStatusProxyRust {
+    fn upcast(rc: std::rc::Rc<std::cell::RefCell<T>>) -> std::rc::Rc<std::cell::RefCell<dyn QParserStatusAdapter>> {
+        rc
+    }
+}
+
 impl QParserStatusProxyRust {
     pub fn class_begin(&mut self) {
         call_rust_trait_impl!(mut self, class_begin())

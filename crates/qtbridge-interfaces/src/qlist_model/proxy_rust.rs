@@ -379,6 +379,12 @@ where T: QListModel + QObjectHolder<ProxyRust = QListModelProxyRust> { }
 
 pub type QListModelProxyRust = GenericRustProxy<QListModelProxyCpp, dyn QListModelAdapter>;
 
+impl<T: QListModelAdapter + 'static> qtbridge_runtime::qproxies::AdapterUpcast<T> for QListModelProxyRust {
+    fn upcast(rc: std::rc::Rc<std::cell::RefCell<T>>) -> std::rc::Rc<std::cell::RefCell<dyn QListModelAdapter>> {
+        rc
+    }
+}
+
 impl QListModelProxyRust {
     pub fn index(&self, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex {
         call_rust_trait_impl!(self, index(row, column, parent))

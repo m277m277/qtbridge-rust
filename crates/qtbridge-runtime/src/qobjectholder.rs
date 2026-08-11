@@ -6,19 +6,23 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use qtbridge_type_lib::{QObject, QObjectMutPtr, QVariant};
-use crate::qproxies::{PlacementAddress, QRustProxy};
+use crate::qproxies::{QRustProxy, PlacementAddress, AdapterUpcast};
 use crate::registry::Owner;
 use crate::rustobjectgetter::get_rust_proxy;
 use crate::{DispatchMetaCall, QMetaInfo, QmlMethodInvoker};
 
 
-pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
+pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static
+where
+    Self::ProxyRust: AdapterUpcast<Self>,
+    Self::ProxyRust: QRustProxy<ProxyCppType = <Self as QMetaInfo>::CppProxy>,
+{
     /// Alias for the Rust proxy type corresponding to the user-defined type.
     /// The Rust proxy is an intermediate layer between the Rust object and the C++ proxy,
     /// forwarding calls in both directions and managing borrowing of the Rust object
     /// during C++ calls.
     #[doc(hidden)]
-    type ProxyRust: QRustProxy<ProxyCppType = <Self as QMetaInfo>::CppProxy>;
+    type ProxyRust;
 
     /// Return a pointer to the Rust proxy associated with the specified object,
     /// or `None` if no proxy is registered.
@@ -136,15 +140,6 @@ pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
         QmlMethodInvoker::new(self)
     }
 
-    /// This function has to be implemented on the specific type and
-    /// provides the conversion from the specific type to the dynamic
-    /// trait type.
-    ///
-    /// This function ensures that the type indeed implements the trait
-    /// specified by the [`QRustProxy`].
-    #[doc(hidden)]
-    fn as_adaptor_trait(rust_obj_rc: Rc<RefCell<Self>>) -> Rc<RefCell<<Self::ProxyRust as QRustProxy>::AdapterType>>;
-
     /// Creates the proxy pair for the given Rust object instance, links
     /// them together and registers the object in `crate::registry`.
     /// The C++ proxy is created with placement new at `at_address` if
@@ -155,7 +150,7 @@ pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
     ) {
         let key = (*rust_obj_rc).as_ptr() as *const u8;
         let keep: Rc<RefCell<Self>> = rust_obj_rc.clone();
-        let dyn_rc = Self::as_adaptor_trait(rust_obj_rc);
+        let dyn_rc = <Self::ProxyRust as AdapterUpcast<Self>>::upcast(rust_obj_rc);
         let dynamic_meta = <Self as QMetaInfo>::get_shared_dynamic_meta_object_data();
         let proxy = Self::ProxyRust::new(&dyn_rc, dynamic_meta, at_address, Box::new(move || {
             crate::registry::unregister(key);

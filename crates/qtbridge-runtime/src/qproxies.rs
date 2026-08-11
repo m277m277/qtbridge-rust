@@ -88,7 +88,6 @@ pub trait QCppProxy {
 /// A wrapper trait for the interface trait that QtBridge users implement. This wrapper
 /// is required because not all traits can be used with dyn and are thus incompatible with
 /// `RustObjAccess` (See "object safety" or "dyn compatibility").
-///
 pub trait QRustProxy {
     type ProxyCppType: QCppProxy<ProxyRustType = Self>;
     type AdapterType: DispatchMetaCall + ?Sized;
@@ -113,4 +112,11 @@ pub trait QRustProxy {
     /// concrete type requires a checked reinterpret (see
     /// `QObjectHolder::qobject_to_rc_ref_cell`).
     fn get_rust_object_rc(&self) -> Rc<RefCell<Self::AdapterType>>;
+}
+
+/// Coerces a concrete user type into the proxy's type-erased adapter handle.
+///
+/// Implemented once per interface.
+pub trait AdapterUpcast<T>: QRustProxy {
+    fn upcast(rc: std::rc::Rc<std::cell::RefCell<T>>) -> std::rc::Rc<std::cell::RefCell<Self::AdapterType>>;
 }
