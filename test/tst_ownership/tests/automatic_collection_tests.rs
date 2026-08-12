@@ -11,7 +11,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
 use qtbridge::qtbridge_runtime::live_object_count;
 use qtbridge::qtbridge_interfaces::live_proxy_count;
 

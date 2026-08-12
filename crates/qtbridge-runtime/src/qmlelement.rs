@@ -111,12 +111,12 @@ pub trait QmlElement : QObjectHolder + Default
 
 fn element_ctor<T: QmlElement>(addr: *mut u8, _userdata: *mut u8) {
     let instance = std::rc::Rc::new(std::cell::RefCell::new(T::default()));
-    T::register_instance_in_map(instance.clone(), Owner::Engine, Some(addr));
+    T::register_instance(instance.clone(), Owner::Engine, Some(addr));
 }
 
 fn singleton_ctor<T: QmlElement>() -> *mut QObject {
     let instance = std::rc::Rc::new(std::cell::RefCell::new(T::default()));
-    T::register_instance_in_map(instance.clone(), Owner::Engine, None);
+    T::register_instance(instance.clone(), Owner::Engine, None);
     instance.borrow().get_qobject_ptr()
 }
 

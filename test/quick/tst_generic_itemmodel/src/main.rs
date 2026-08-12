@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use qtbridge::QApp;
-use qtbridge::QObjectHolder;
+use qtbridge::QmlObject;
 use qtbridge::qtbridge_type_lib::QString;
 
 use tst_generic_itemmodel::Backend;

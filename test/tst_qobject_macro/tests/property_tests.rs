@@ -7,12 +7,12 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use qtbridge::{QObjectHolder, qobject};
+use qtbridge::{QmlObject, qobject};
 use qtbridge_type_lib::{QString, QVariant, QVariantValue};
 
 use crate::common::{capitalize_first_char, get_type_name};
 
-trait TestObjHelper: QObjectHolder {
+trait TestObjHelper: QmlObject {
     fn property_type() -> &'static str;
     fn create_default() -> Rc<RefCell<Self>> {
         Self::create_with_values(TestValues::default())
@@ -120,7 +120,7 @@ pub mod member_properties {
         }
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }
@@ -265,7 +265,7 @@ mod accessor_value_properties {
 
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }
@@ -424,7 +424,7 @@ mod accessor_reference_properties {
 
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }

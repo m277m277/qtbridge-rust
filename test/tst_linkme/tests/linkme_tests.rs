@@ -6,7 +6,7 @@
 //! QML solely through the automatic registration of the `linkme` feature,
 //! which runs the collected registration callbacks in `QApp::new()`.
 
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
 
 #[qobject]
 pub mod probe {

@@ -10,7 +10,8 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use qtbridge::{QApp, QObjectHolder, QmlElement, collect_garbage, qobject};
+use qtbridge::{QApp, QmlObject, QmlElement, collect_garbage, qobject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use qtbridge::qtbridge_runtime::live_object_count;
 
 thread_local! { static DROP_COUNT: Cell<u32> = Cell::new(0); }

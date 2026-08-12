@@ -8,7 +8,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use qtbridge::{QObjectHolder, collect_garbage, qobject};
+use qtbridge::{QmlObject, collect_garbage, qobject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use qtbridge::qtbridge_type_lib::QSignalSpy;
 
 #[qobject]

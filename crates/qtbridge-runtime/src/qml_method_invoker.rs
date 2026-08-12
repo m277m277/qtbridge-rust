@@ -40,7 +40,7 @@ fn on_qobject_destroyed(flag_ptr: usize) {
 ///
 /// ```
 /// use qtbridge::invoke_method;
-/// use qtbridge::{qobject, QObjectHolder};
+/// use qtbridge::{qobject, QmlObject};
 ///
 /// #[derive(Default)]
 /// pub struct MyClass { }
@@ -76,7 +76,7 @@ macro_rules! invoke_method {
     }};
 }
 
-/// A thread-safe handle for invoking slots and signals on a [`QObjectHolder`].
+/// A thread-safe handle for invoking slots and signals on a `#[qobject]` instance.
 ///
 /// Calls are scheduled on the Qt event loop and execute on the Qt thread.
 /// If the target object has been dropped, calls are silently discarded.
@@ -92,12 +92,12 @@ macro_rules! invoke_method {
 /// engine. If the object is already mutably borrowed on the Qt thread at
 /// that moment, the call will panic.
 ///
-/// Obtain an instance via [`QObjectHolder::get_qml_method_invoker`].
+/// Obtain an instance via [`QmlObject::get_qml_method_invoker`](crate::QmlObject::get_qml_method_invoker).
 ///
 /// # Example
 ///
 /// ```
-/// # use qtbridge::{qobject, QObjectHolder};
+/// # use qtbridge::{qobject, QmlObject};
 /// # #[qobject]
 /// # pub mod example {
 /// #     #[derive(Default)]
@@ -125,7 +125,7 @@ impl QmlMethodInvoker {
 
     /// Creates a `QmlMethodInvoker` for `target` and tracks its lifetime.
     ///
-    /// Prefer [`QObjectHolder::get_qml_method_invoker`] over calling this directly.
+    /// Prefer [`QmlObject::get_qml_method_invoker`](crate::QmlObject::get_qml_method_invoker) over calling this directly.
     pub fn new<T: QObjectHolder>(target: &T) -> Self {
         let obj = target.get_qobject_ptr();
         let alive = Arc::new(AtomicBool::new(true));

@@ -7,12 +7,12 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use qtbridge::{QObjectHolder, qobject};
-use qtbridge_type_lib::{QList, QListElement, QString, QVariant, QVariantValue};
+use qtbridge::{QmlObject, qobject};
+use qtbridge_type_lib::{QList, QString, QListElement, QVariantValue, QVariant};
 
 use crate::common::{capitalize_first_char, get_type_name};
 
-trait TestObjHelper: QObjectHolder {
+trait TestObjHelper: QmlObject {
     fn property_type() -> &'static str;
     fn create_default() -> Rc<RefCell<Self>> {
         Self::create_with_values(TestValues::default())
@@ -115,7 +115,7 @@ pub mod member_properties {
         }
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }
@@ -252,7 +252,7 @@ mod accessor_value_properties {
 
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }
@@ -406,7 +406,7 @@ mod accessor_reference_properties {
 
         fn create_with_values(values: TestValues) -> std::rc::Rc<std::cell::RefCell<Self>>{
             let obj = std::rc::Rc::new(std::cell::RefCell::new(Self::from(values)));
-            <Self as super::QObjectHolder>::attach_qobject(&obj);
+            <Self as super::QmlObject>::attach_qobject(&obj);
             obj
         }
     }
@@ -501,7 +501,7 @@ impl TestObjHelper for TestObjectImpl {
     }
     fn create_with_values(values: TestValues) -> Rc<RefCell<Self>> {
         let obj = Rc::new(RefCell::new(Self::from(values)));
-        <Self as QObjectHolder>::attach_qobject(&obj);
+        <Self as QmlObject>::attach_qobject(&obj);
         obj
     }
 }

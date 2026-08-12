@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use qtbridge::{QApp, QObjectHolder, QmlElement, qobject};
+use qtbridge::{QApp, QmlObject, QmlElement, qobject};
 
 #[derive(Default)]
 pub struct Cat {

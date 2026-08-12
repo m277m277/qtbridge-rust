@@ -1,7 +1,7 @@
 // Copyright (C) 2026 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
-use qtbridge::{QApp, QObjectHolder, QmlElement, qobject};
+use qtbridge::{QApp, QmlObject, QmlElement, qobject};
 
 #[qobject]
 pub mod cat {
@@ -34,7 +34,7 @@ pub use reporter::Reporter;
 pub mod backend {
     use std::rc::Rc;
     use std::cell::RefCell;
-    use qtbridge::QObjectHolder;
+    use qtbridge::QmlObject;
     use super::Cat;
 
     #[derive(Default)]

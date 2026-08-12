@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use qtbridge::qobject;
-use qtbridge::QObjectHolder;
+use qtbridge::QmlObject;
 
 #[qobject(Base = QAbstractItemModel, ConvertToCamelCase)]
 mod backend {

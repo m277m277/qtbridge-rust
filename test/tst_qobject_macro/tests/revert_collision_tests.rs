@@ -8,7 +8,7 @@
 // inherited base-class methods, so these compile and register.
 
 use qtbridge_type_lib::QGuiApplication;
-use qtbridge::{qobject, QObjectHolder, QModelItem};
+use qtbridge::{qobject, QmlObject, QModelItem};
 use qtbridge::invoke_method;
 
 #[derive(Clone, Debug, Default, QModelItem)]

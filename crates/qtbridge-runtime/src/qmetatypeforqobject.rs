@@ -23,7 +23,7 @@ fn monomorphize_default_ctor<T: QObjectHolder>() -> extern "C" fn(*const QMetaTy
     extern "C" fn default_ctor<T: QObjectHolder>(_iface: *const QMetaTypeInterface, addr: *mut u8) {
         let instance =
         Rc::new(RefCell::new(<T as Default>::default()));
-        <T as QObjectHolder>::register_instance_in_map(instance, Owner::Engine, Some(addr));
+        <T as QObjectHolder>::register_instance(instance, Owner::Engine, Some(addr));
     }
     default_ctor::<T>
 }

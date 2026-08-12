@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use qtbridge::{QObjectHolder, invoke_method};
+use qtbridge::{QmlObject, invoke_method};
 use crate::rest_service::Service;
 use crate::utils::{is_success, send};
 

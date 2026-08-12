@@ -36,7 +36,7 @@ pub mod special_traits {
 /// some code generated at macro expansion time. You should not implement these
 /// traits yourself. As a user, you should only interact with:
 ///
-/// * [`QObjectHolder`]
+/// * [`QmlObject`]
 /// * [`QmlElement`] (only non-generic types)
 ///
 /// This macro makes it possible to declare the following items within the
@@ -67,8 +67,8 @@ pub mod special_traits {
 ///
 /// In order to communicate with QML, the macro creates bridging objects that are attached
 /// to the respective structs. Therefore, objects created with [`qobject`] should be
-/// created with [`default_with_attached_qobject`](QObjectHolder::default_with_attached_qobject)
-/// or expanded with [`attach_qobject`](QObjectHolder::attach_qobject). This is not necessary if
+/// created with [`default_with_attached_qobject`](QmlObject::default_with_attached_qobject)
+/// or expanded with [`attach_qobject`](QmlObject::attach_qobject). This is not necessary if
 /// the struct is instantiated in QML.
 ///
 /// When [`register`](QmlElement::register) is called, the macro creates a QML
@@ -415,12 +415,42 @@ pub use qtbridge_gen::qproperty;
 
 pub use qtbridge_runtime::{QApp, qresource, QmlMethodInvoker};
 
-/// Provides access to the underlying QObject for types exposed to QML.
-///
-/// Automatically implemented by [`qobject`]. Do not implement this trait manually.
-///
-#[doc(inline)]
+#[doc(hidden)]
 pub use qtbridge_runtime::QObjectHolder;
+
+/// Basic functionality for `#[qobject]` types.
+///
+/// This trait connects structs to QML and manages their lifetime under
+/// QML usage. This trait is available on every `#[qobject]` type.
+/// Do not implement this trait manually.
+///
+/// # Object lifetime and ownership
+///
+/// A `#[qobject]` value is a plain Rust value that you can interact normally
+/// with. In order to allow the QML engine to interact with it, it needs to be
+/// wrapped in an `Rc<RefCell<_>>`. QtBridge clones this shared reference,
+/// keeps it alive while in use by QML and borrows references to call into
+/// Rust code.
+///
+/// QtBridge requires all `#[qobject]` types to have a proxy `QObject` on
+/// the QML side. It is attached lazily on its first exposure, or eagerly
+/// with [`QmlObject::default_with_attached_qobject`] and
+/// [`QmlObject::attach_qobject`].
+///
+/// The `QObject` proxy has to follow the Qt lifetime concept: Parents and
+/// Components delete their children in their destructor.
+///
+/// An object whose `QObject` was deleted remains a fully usable Rust value.
+/// The interactions with Qt (emitting signals, updating model views) become
+/// a no-op. On its next exposure to QML a fresh `QObject` is attached.
+/// Connections, bindings and QML references to the old `QObject` are not
+/// restored.
+///
+/// An object no longer referenced from Rust or reachable from QML is freed
+/// by [`collect_garbage`], which runs automatically after each QML
+/// garbage collection and during allocation pressure.
+#[doc(inline)]
+pub use qtbridge_runtime::QmlObject;
 
 /// QmlElement enables QML to instantiate types of this trait.
 ///

@@ -4,7 +4,8 @@
 
 
 use qtbridge_type_lib::{QGuiApplication, QVariantList};
-use qtbridge::{qobject, QObjectHolder};
+use qtbridge::{qobject, QmlObject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use qtbridge::qtbridge_type_lib::{QSignalSpy};
 use qtbridge::invoke_method;
 #[qobject]

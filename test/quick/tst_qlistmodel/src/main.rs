@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use qtbridge::QApp;
-use qtbridge::QObjectHolder;
+use qtbridge::QmlObject;
 
 use tst_qlistmodel::Backend;
 

@@ -28,7 +28,7 @@ use data::Data;
 pub mod backend {
     use std::cell::RefCell;
     use std::rc::Rc;
-    use qtbridge::QObjectHolder;
+    use qtbridge::QmlObject;
     use super::Data;
 
     #[derive(Default)]

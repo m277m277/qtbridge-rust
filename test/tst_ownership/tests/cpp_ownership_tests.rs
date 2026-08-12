@@ -7,7 +7,8 @@
 //! while Rust holds handles. We set `CppOwnership` explicitly so the
 //! objects should survive.
 
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use std::cell::RefCell;
 use std::rc::Rc;
 

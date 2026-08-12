@@ -3,7 +3,7 @@
 #![cfg(test)]
 mod common;
 
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
 use common::{get_type_name, decapitalize_first_char};
 
 #[qobject]

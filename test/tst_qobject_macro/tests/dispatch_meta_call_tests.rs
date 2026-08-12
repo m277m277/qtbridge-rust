@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 #![cfg(test)]
 
-use qtbridge::{QObjectHolder, qobject};
+use qtbridge::{QmlObject, qobject};
 use qtbridge::qtbridge_runtime::DispatchMetaCall;
 use qtbridge::qtbridge_type_lib::QVariant;
 

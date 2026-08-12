@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use qtbridge::{QObjectHolder, QmlElement, qobject};
+use qtbridge::{QmlObject, QmlElement, qobject};
 use quicktest::quick_test_main;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -116,7 +116,7 @@ pub mod node {
 
 #[qobject(Singleton)]
 pub mod backend {
-    use super::{RefCell, Rc, QObjectHolder};
+    use super::{RefCell, Rc, QmlObject};
     use super::node::Node;
 
     pub struct Backend {

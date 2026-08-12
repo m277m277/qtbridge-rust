@@ -4,7 +4,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use qtbridge::{QApp, QListModel, QObjectHolder, qobject};
+use qtbridge::{QApp, QListModel, QmlObject, qobject};
 
 #[qobject(Base = QListModel)]
 pub mod model {

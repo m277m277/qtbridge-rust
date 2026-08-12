@@ -3,7 +3,7 @@
 #![cfg(test)]
 mod common;
 
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
 use common::{MAX_SAFE_INTEGER, MIN_SAFE_INTEGER, capitalize_first_char};
 
 #[qobject(ConvertToCamelCase)]

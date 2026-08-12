@@ -4,7 +4,8 @@
 mod common;
 
 use qtbridge::qtbridge_type_lib::{QSignalSpy, QString, QVariant};
-use qtbridge::{qobject, QObjectHolder};
+use qtbridge::{qobject, QmlObject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use common::{MAX_SAFE_INTEGER, MIN_SAFE_INTEGER};
 
 #[qobject]

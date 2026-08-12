@@ -4,7 +4,8 @@
 mod common;
 
 use std::fmt::Debug;
-use qtbridge::{QApp, QObjectHolder, qobject};
+use qtbridge::{QApp, QmlObject, qobject};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 use qtbridge_type_lib::{QList, QListElement, QString, QVariantValue};
 use crate::common::{capitalize_first_char, get_type_name};
 
