@@ -88,7 +88,8 @@ pub mod special_traits {
 ///
 /// ## Requirements
 ///
-/// A `struct` using [`qobject`] must implement the [`Default`] trait.
+/// A `struct` using [`qobject`] must implement the [`Default`] trait when it
+/// is registered as a QML element; `NoQmlElement` types need no `Default`.
 /// The static function [`register`](QmlElement::register) has to be called at the start of the
 /// main function to make this `struct` instantiable from QML.
 ///

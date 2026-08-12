@@ -16,7 +16,7 @@ pub type CppProxyOf<T> = <<T as QObjectHolder>::ProxyRust as QRustProxy>::ProxyC
 
 /// Bridge proxy selection and connector behind every `#[qobject]` type.
 #[doc(hidden)]
-pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static
+pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Sized + 'static
 where
     Self::ProxyRust: AdapterUpcast<Self>,
     Self::ProxyRust: QRustProxy,

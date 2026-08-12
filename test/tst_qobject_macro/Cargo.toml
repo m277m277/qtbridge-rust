@@ -102,3 +102,8 @@ harness = false
 name = "revert_collision_tests"
 path = "tests/revert_collision_tests.rs"
 harness = false
+
+[[test]]
+name = "non_default_tests"
+path = "tests/non_default_tests.rs"
+harness = false

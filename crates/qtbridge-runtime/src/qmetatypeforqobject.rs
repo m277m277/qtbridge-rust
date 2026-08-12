@@ -20,8 +20,8 @@ fn monomorphize_meta_object_fn<T: QObjectHolder>() -> extern "C" fn(*const QMeta
     meta_object_fn::<T>
 }
 
-fn monomorphize_default_ctor<T: QObjectHolder>() -> extern "C" fn(*const QMetaTypeInterface, *mut u8) {
-    extern "C" fn default_ctor<T: QObjectHolder>(_iface: *const QMetaTypeInterface, addr: *mut u8) {
+fn monomorphize_default_ctor<T: QObjectHolder + Default>() -> extern "C" fn(*const QMetaTypeInterface, *mut u8) {
+    extern "C" fn default_ctor<T: QObjectHolder + Default>(_iface: *const QMetaTypeInterface, addr: *mut u8) {
         let instance =
         Rc::new(RefCell::new(<T as Default>::default()));
         <T as QObjectHolder>::register_instance(instance, Owner::Engine, Some(addr));
@@ -37,7 +37,7 @@ fn monomorphize_dtor<T: QObjectHolder>() -> extern "C" fn (*const QMetaTypeInter
 }
 
 /// Builds the [`QMetaTypeInterface`] describing `T`.
-pub fn init_interface_for<T: QObjectHolder + 'static>()-> QMetaTypeInterface {
+pub fn init_interface_for<T: QObjectHolder + Default>()-> QMetaTypeInterface {
     let flags: u32 =
         (QMetaTypeFlag::NeedsConstruction as u32)
         | (QMetaTypeFlag::NeedsDestruction as u32)
@@ -64,7 +64,7 @@ pub fn init_interface_for<T: QObjectHolder + 'static>()-> QMetaTypeInterface {
 
 /// Builds the [`QMetaTypeInterface`] describing `T*` - a pointer to the
 /// QObject-derived type `T`.
-pub fn init_ptr_interface_for<T: QObjectHolder + 'static>() -> QMetaTypeInterface {
+pub fn init_ptr_interface_for<T: QObjectHolder>() -> QMetaTypeInterface {
     let flags: u32 =
         (QMetaTypeFlag::IsPointer as u32)
         | (QMetaTypeFlag::PointerToQObject as u32)
@@ -89,7 +89,7 @@ pub fn init_ptr_interface_for<T: QObjectHolder + 'static>() -> QMetaTypeInterfac
 
 /// HashMap cached [`QMetaTypeInterface`], used for generic QObject types
 /// where a per-instantiation `OnceLock` is not available.
-pub fn interface_for_generic<T: QObjectHolder + 'static>() -> &'static QMetaTypeInterface {
+pub fn interface_for_generic<T: QObjectHolder + Default>() -> &'static QMetaTypeInterface {
     thread_local!(static IFACE_MAP: RefCell<HashMap<TypeId , *const QMetaTypeInterface>> = RefCell::new(HashMap::new ()));
     let type_id = TypeId::of::<T>();
     {
@@ -107,7 +107,7 @@ pub fn interface_for_generic<T: QObjectHolder + 'static>() -> &'static QMetaType
 
 /// Pointer-metatype counterpart of [`interface_for_generic`], used for generic
 /// QObject types where a per-instantiation `OnceLock` is not available.
-pub fn ptr_interface_for_generic<T: QObjectHolder + 'static>() -> &'static QMetaTypeInterface {
+pub fn ptr_interface_for_generic<T: QObjectHolder>() -> &'static QMetaTypeInterface {
     thread_local!(static PTR_IFACE_MAP: RefCell<HashMap<TypeId, *const QMetaTypeInterface>> = RefCell::new(HashMap::new()));
     let type_id = TypeId::of::<T>();
     {
