@@ -3,7 +3,6 @@ source: crates/qtbridge-gen/src/qt_gen_impl/tests/qobject_meta_tests.rs
 expression: formatted
 ---
 impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
-    type CppProxy = qtbridge::qtbridge_interfaces::qobject::QObjectProxyCpp;
     fn build_dynamic_meta_type(
         mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>,
     ) {
@@ -54,34 +53,5 @@ impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
         );
         meta_obj.as_mut().add_class_info("Author", "The Qt Company");
         meta_obj.as_mut().end_meta_registration();
-    }
-    fn get_shared_dynamic_meta_object_data(
-    ) -> &'static qtbridge::qtbridge_runtime::DynamicMetaObjectData {
-        use std::sync::OnceLock;
-        thread_local! { static DYNAMIC_META_OBJECT : OnceLock < & 'static qtbridge :: qtbridge_runtime :: DynamicMetaObjectData > = OnceLock :: new () ; }
-        DYNAMIC_META_OBJECT.with(|cell| {
-            *cell.get_or_init(|| {
-                let ptr = Self::create_dynamic_meta_object_data_for_type();
-                unsafe { ptr.as_ref() }.unwrap()
-            })
-        })
-    }
-    fn get_qmetatype() -> qtbridge::qtbridge_type_lib::QMetaType {
-        use std::sync::OnceLock;
-        static META_TYPE_INTERFACE: OnceLock<qtbridge::qtbridge_type_lib::QMetaTypeInterface> =
-            OnceLock::new();
-        let iface = META_TYPE_INTERFACE.get_or_init(
-            qtbridge::qtbridge_runtime::qmetatypeforqobject::init_interface_for::<Self>,
-        );
-        qtbridge::qtbridge_type_lib::QMetaType::new_with_interface(iface as *const _)
-    }
-    fn get_qobject_ptr_qmetatype() -> qtbridge::qtbridge_type_lib::QMetaType {
-        use std::sync::OnceLock;
-        static PTR_META_TYPE_INTERFACE: OnceLock<qtbridge::qtbridge_type_lib::QMetaTypeInterface> =
-            OnceLock::new();
-        let iface = PTR_META_TYPE_INTERFACE.get_or_init(
-            qtbridge::qtbridge_runtime::qmetatypeforqobject::init_ptr_interface_for::<Self>,
-        );
-        qtbridge::qtbridge_type_lib::QMetaType::new_with_interface(iface as *const _)
     }
 }

@@ -1,8 +1,6 @@
 // Copyright (C) 2025 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
-use qtbridge_gen_common::naming;
-
 use quote::{ToTokens, quote};
 use proc_macro2::TokenStream;
 
@@ -11,7 +9,6 @@ use qt_meta_gen::{QClassInfo, QPropertyInfo, QSignalInfo, QSlotInfo};
 
 pub struct QMetaInfoContext<'a> {
     pub struct_ident: &'a syn::Ident,
-    pub iface_ident: &'a syn::Ident,
     pub generics: &'a syn::Generics,
     pub signals: &'a [QSignalInfo],
     pub slots: &'a [QSlotInfo],
@@ -26,63 +23,11 @@ pub fn generate_qmetainfo_trait_impl(ctx: &QMetaInfoContext) -> syn::Result<syn:
     let properties_meta_reg = generate_properties_meta_registration(ctx.properties, ctx.signals)?;
     let class_infos_reg = generate_class_infos_meta_registration(ctx.class_infos)?;
 
-    let iface_module = naming::rust::module::from_struct_name(ctx.iface_ident);
-    let proxy_cpp = naming::rust::structure::proxy_cpp(ctx.iface_ident);
-
     let struct_ident = &ctx.struct_ident;
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
-    let has_generics = !generics.params.is_empty();
-    let get_dyn_meta_object_body = if has_generics {
-        quote! {
-            qtbridge::qtbridge_runtime::qmetainfo::dynamic_meta_object_data_for_generic::<Self>()
-        }
-    } else {
-        quote! {
-            use std::sync::OnceLock;
-            thread_local! {
-                static DYNAMIC_META_OBJECT: OnceLock<&'static qtbridge::qtbridge_runtime::DynamicMetaObjectData> = OnceLock::new();
-            }
-
-            DYNAMIC_META_OBJECT.with(|cell| {
-                *cell.get_or_init(|| {
-                    let ptr = Self::create_dynamic_meta_object_data_for_type();
-                    unsafe { ptr.as_ref() }.unwrap()
-                })
-            })
-        }
-    };
-
-    let get_qmetatype_body = if has_generics {
-        quote! {
-            let iface = qtbridge::qtbridge_runtime::qmetatypeforqobject::interface_for_generic::<Self>();
-        }
-    } else {
-        quote! {
-            use std::sync::OnceLock;
-            static META_TYPE_INTERFACE: OnceLock<qtbridge::qtbridge_type_lib::QMetaTypeInterface> = OnceLock::new();
-            let iface = META_TYPE_INTERFACE.get_or_init(qtbridge::qtbridge_runtime::qmetatypeforqobject::init_interface_for::<Self>);
-        }
-    };
-
-    let get_ptr_qmetatype_body = if has_generics {
-        quote! {
-            let iface = qtbridge::qtbridge_runtime::qmetatypeforqobject::ptr_interface_for_generic::<Self>();
-        }
-    } else {
-        quote! {
-            use std::sync::OnceLock;
-            static PTR_META_TYPE_INTERFACE: OnceLock<qtbridge::qtbridge_type_lib::QMetaTypeInterface> = OnceLock::new();
-            let iface = PTR_META_TYPE_INTERFACE.get_or_init(qtbridge::qtbridge_runtime::qmetatypeforqobject::init_ptr_interface_for::<Self>);
-        }
-    };
-
     let code = quote! {
         impl #impl_generics qtbridge::qtbridge_runtime::QMetaInfo for #struct_ident #type_generics #where_clause {
-
-
-            type CppProxy = qtbridge::qtbridge_interfaces::#iface_module::#proxy_cpp;
-
             fn build_dynamic_meta_type(mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>) {
                 use qtbridge::qtbridge_runtime::{QMetaTypeCompatible, QMetaTypeGet, QPropertyMember};
                 use qtbridge::qtbridge_type_lib;
@@ -93,20 +38,6 @@ pub fn generate_qmetainfo_trait_impl(ctx: &QMetaInfoContext) -> syn::Result<syn:
                 #class_infos_reg
 
                 meta_obj.as_mut().end_meta_registration();
-            }
-
-            fn get_shared_dynamic_meta_object_data() -> &'static qtbridge::qtbridge_runtime::DynamicMetaObjectData {
-                #get_dyn_meta_object_body
-            }
-
-            fn get_qmetatype() -> qtbridge::qtbridge_type_lib::QMetaType {
-                #get_qmetatype_body
-                qtbridge::qtbridge_type_lib::QMetaType::new_with_interface(iface as *const _)
-            }
-
-            fn get_qobject_ptr_qmetatype() -> qtbridge::qtbridge_type_lib::QMetaType {
-                #get_ptr_qmetatype_body
-                qtbridge::qtbridge_type_lib::QMetaType::new_with_interface(iface as *const _)
             }
         }
     };

@@ -16,11 +16,43 @@ pub fn generate_qobject_holder(
     let iface_module = naming::rust::module::from_struct_name(iface_name);
     let proxy_rust = naming::rust::structure::proxy_rust(iface_name);
 
+    let has_generics = !impl_generics.params.is_empty();
     let (impl_generics, type_generics, where_clause) = impl_generics.split_for_impl();
+
+    // Per-type OnceLock overrides of the map-based defaults; generic types
+    // cannot have per-instantiation statics and keep the defaults.
+    let realization_overrides = if has_generics {
+        quote! {}
+    } else {
+        quote! {
+            fn get_shared_dynamic_meta_object_data() -> &'static qtbridge::qtbridge_runtime::DynamicMetaObjectData {
+                use std::sync::OnceLock;
+                thread_local! {
+                    static DYNAMIC_META_OBJECT: OnceLock<&'static qtbridge::qtbridge_runtime::DynamicMetaObjectData> = OnceLock::new();
+                }
+
+                DYNAMIC_META_OBJECT.with(|cell| {
+                    *cell.get_or_init(|| {
+                        let ptr = Self::create_dynamic_meta_object_data_for_type();
+                        unsafe { ptr.as_ref() }.unwrap()
+                    })
+                })
+            }
+
+            fn get_qobject_ptr_qmetatype() -> qtbridge::qtbridge_type_lib::QMetaType {
+                use std::sync::OnceLock;
+                static PTR_META_TYPE_INTERFACE: OnceLock<qtbridge::qtbridge_type_lib::QMetaTypeInterface> = OnceLock::new();
+                let iface = PTR_META_TYPE_INTERFACE.get_or_init(qtbridge::qtbridge_runtime::qmetatypeforqobject::init_ptr_interface_for::<Self>);
+                qtbridge::qtbridge_type_lib::QMetaType::new_with_interface(iface as *const _)
+            }
+        }
+    };
 
     let code = quote! {
         impl #impl_generics qtbridge::qtbridge_runtime::QObjectHolder for #struct_ident #type_generics #where_clause {
             type ProxyRust = qtbridge::qtbridge_interfaces::#iface_module::#proxy_rust;
+
+            #realization_overrides
         }
     };
     syn::parse2(code)

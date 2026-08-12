@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use qtbridge_type_lib::{QMetaType, QObjectMutPtr, QVariant};
 
-use crate::{QMetaInfo, QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlElement, ToQVariant, TryFromQVariant};
+use crate::{QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlElement, ToQVariant, TryFromQVariant};
 
 /// Enables a type to be used as a property.
 ///
@@ -72,7 +72,7 @@ impl<T: PartialEq + QMetaTypeCompatible + QVariantConvertible> QPropertyMember f
 
 impl<T: QObjectHolder> QPropertyMember for Rc<RefCell<T>> {
     fn qmetatype() -> QMetaType {
-        <T as QMetaInfo>::get_qobject_ptr_qmetatype()
+        <T as QObjectHolder>::get_qobject_ptr_qmetatype()
     }
 
     fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {

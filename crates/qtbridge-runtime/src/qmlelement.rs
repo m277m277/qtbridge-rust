@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use crate::QObjectHolder;
-use crate::QMetaInfo;
+use crate::qobjectholder::CppProxyOf;
 use crate::qqmllistproperty::{list_append, list_count, list_at, list_clear};
 use crate::qproxies::QCppProxy;
 use crate::registry::Owner;
@@ -20,6 +20,16 @@ pub trait QmlElement : QObjectHolder + Default
     const ELEMENT_NAME: &str;
     const MINOR_VERSION: u8;
     const MAJOR_VERSION: u8;
+
+    /// Returns the [`QMetaType`] identifying this type, unique per concrete
+    /// type.
+    ///
+    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// default serves generic types and hand-written impls.
+    fn get_qmetatype() -> QMetaType {
+        let iface = crate::qmetatypeforqobject::interface_for_generic::<Self>();
+        QMetaType::new_with_interface(iface as *const _)
+    }
     const IS_SINGLETON: bool;
 
     fn get_list_qmetatype() -> QMetaType {
@@ -29,7 +39,7 @@ pub trait QmlElement : QObjectHolder + Default
         thread_local!(static LIST_IFACE_MAP: RefCell<HashMap<i32, *const QMetaTypeInterface>>
             = RefCell::new(HashMap::new()));
 
-        let element = <Self as QMetaInfo>::get_qmetatype();
+        let element = Self::get_qmetatype();
         let key = element.id();
 
         let existing = LIST_IFACE_MAP.with_borrow(|m| m.get(&key).copied().unwrap_or_default());
@@ -71,7 +81,7 @@ pub trait QmlElement : QObjectHolder + Default
     }
 
     fn register() {
-        let meta_obj_data = <Self as QMetaInfo>::get_shared_dynamic_meta_object_data();
+        let meta_obj_data = <Self as QObjectHolder>::get_shared_dynamic_meta_object_data();
         let meta_obj = unsafe {
             meta_obj_data
                 .get_meta_object()
@@ -81,7 +91,7 @@ pub trait QmlElement : QObjectHolder + Default
 
         if Self::IS_SINGLETON {
             crate::qmlprivate::qml_register_singleton(
-                <Self as QMetaInfo>::get_qobject_ptr_qmetatype(),
+                <Self as QObjectHolder>::get_qobject_ptr_qmetatype(),
                 monomorphize_singleton_ctor::<Self>(),
                 Self::URI.as_bytes(),
                 Self::MAJOR_VERSION,
@@ -94,10 +104,10 @@ pub trait QmlElement : QObjectHolder + Default
             list_metatype.register_type();
 
             crate::qmlprivate::qml_register_element(
-                <Self as QMetaInfo>::get_qobject_ptr_qmetatype(),
+                <Self as QObjectHolder>::get_qobject_ptr_qmetatype(),
                 list_metatype,
-                <<Self as QMetaInfo>::CppProxy as QCppProxy>::get_size() as u32,
-                <<Self as QMetaInfo>::CppProxy as QCppProxy>::parser_status_cast(),
+                <CppProxyOf<Self> as QCppProxy>::get_size() as u32,
+                <CppProxyOf<Self> as QCppProxy>::parser_status_cast(),
                 monomorphize_element_ctor::<Self>(),
                 Self::URI.as_bytes(),
                 Self::MAJOR_VERSION,

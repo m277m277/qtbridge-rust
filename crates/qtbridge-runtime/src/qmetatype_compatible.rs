@@ -9,7 +9,7 @@ use qtbridge_type_lib::{QList, QList_QString, QMetaType, QObject, QObjectList, Q
 #[cfg(feature = "serde_json")]
 use qtbridge_type_lib::{QJsonArray, QJsonValue};
 
-use crate::{QMetaInfo, QMetaTypeGet, QObjectHolder, QmlElement};
+use crate::{QMetaTypeGet, QObjectHolder, QmlElement};
 
 /// Enables a type to be used as a meta call argument and to be convertible from/to QVariant.
 ///
@@ -61,7 +61,7 @@ impl_primitive_convert!(
     usize => u32
 );
 
-// The wire pointer is safe single-threaded: arguments outlive delivery on
+// The CompatibleType pointer is safe single-threaded: arguments outlive delivery on
 // the emitting stack frame, and no collection point runs between a return
 // value leaving Rust and the engine taking ownership. Revisit when signals
 // can cross threads.
@@ -138,7 +138,7 @@ impl<T: QObjectHolder> QMetaTypeCompatible for Rc<RefCell<T>> {
     }
 
     fn compatible_qmetatype() -> QMetaType {
-        <T as QMetaInfo>::get_qobject_ptr_qmetatype()
+        <T as QObjectHolder>::get_qobject_ptr_qmetatype()
     }
 }
 

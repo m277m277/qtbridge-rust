@@ -413,7 +413,9 @@ pub use qtbridge_gen::qslot;
 #[doc(inline)]
 pub use qtbridge_gen::qproperty;
 
-pub use qtbridge_runtime::{QApp, qresource, QmlMethodInvoker};
+pub use qtbridge_runtime::QApp;
+pub use qtbridge_runtime::qresource;
+pub use qtbridge_runtime::QmlMethodInvoker;
 
 #[doc(hidden)]
 pub use qtbridge_runtime::QObjectHolder;

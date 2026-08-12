@@ -7,13 +7,14 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use qtbridge_type_lib::{QMetaTypeInterface, QMetaTypeFlag, QMetaObject, QObject};
 use crate::qproxies::QCppProxy;
-use crate::{QObjectHolder, QMetaInfo};
+use crate::QObjectHolder;
+use crate::qobjectholder::CppProxyOf;
 use crate::registry::Owner;
 
 fn monomorphize_meta_object_fn<T: QObjectHolder>() -> extern "C" fn(*const QMetaTypeInterface) -> *mut QMetaObject {
     extern "C" fn meta_object_fn<T: QObjectHolder>(_iface: *const QMetaTypeInterface) -> *mut QMetaObject {
         let meta_obj_data =
-        <T as QMetaInfo>::get_shared_dynamic_meta_object_data();
+        <T as QObjectHolder>::get_shared_dynamic_meta_object_data();
         meta_obj_data.get_meta_object()
     }
     meta_object_fn::<T>
@@ -50,8 +51,8 @@ pub fn init_interface_for<T: QObjectHolder + 'static>()-> QMetaTypeInterface {
         .leak();
 
     QMetaTypeInterface::fill_fields(
-        <<T as QMetaInfo>::CppProxy as QCppProxy>::get_align(),
-        <<T as QMetaInfo>::CppProxy as QCppProxy>::get_size(),
+        <CppProxyOf<T> as QCppProxy>::get_align(),
+        <CppProxyOf<T> as QCppProxy>::get_size(),
         flags,
         class_name,
         monomorphize_meta_object_fn::<T>() as usize,

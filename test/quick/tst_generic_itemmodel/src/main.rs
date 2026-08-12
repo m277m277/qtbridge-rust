@@ -18,9 +18,9 @@ fn main() {
     let backend2 = Rc::new(RefCell::new(Backend::<QString>::new(data2)));
     Backend::attach_qobject(&backend2);
 
-    use qtbridge::qtbridge_runtime::QMetaInfo;
-    let a = <Backend<i32> as QMetaInfo>::get_qmetatype();
-    let b = <Backend<QString> as QMetaInfo>::get_qmetatype();
+    use qtbridge::qtbridge_runtime::QObjectHolder;
+    let a = <Backend<i32> as QObjectHolder>::get_qobject_ptr_qmetatype();
+    let b = <Backend<QString> as QObjectHolder>::get_qobject_ptr_qmetatype();
     assert_ne!(a, b, "QMetaTypes are not unique");
 
     let initial_properties = [

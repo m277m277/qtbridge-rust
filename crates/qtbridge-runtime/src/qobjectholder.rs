@@ -5,24 +5,57 @@ use std::cell::RefCell;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use qtbridge_type_lib::QObject;
-use crate::qproxies::{QRustProxy, PlacementAddress, AdapterUpcast};
+use qtbridge_type_lib::{QMetaType, QObject};
+use crate::qproxies::{QCppProxy, QRustProxy, PlacementAddress, AdapterUpcast};
 use crate::registry::Owner;
 use crate::rustobjectgetter::get_rust_proxy;
-use crate::{DispatchMetaCall, QMetaInfo};
+use crate::{DispatchMetaCall, DynamicMetaObjectData, QMetaInfo};
+
+/// The C++ half of the proxy pair of `T`.
+pub type CppProxyOf<T> = <<T as QObjectHolder>::ProxyRust as QRustProxy>::ProxyCppType;
 
 /// Bridge proxy selection and connector behind every `#[qobject]` type.
 #[doc(hidden)]
 pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static
 where
     Self::ProxyRust: AdapterUpcast<Self>,
-    Self::ProxyRust: QRustProxy<ProxyCppType = <Self as QMetaInfo>::CppProxy>,
+    Self::ProxyRust: QRustProxy,
 {
     /// Alias for the Rust proxy type corresponding to the user-defined type.
     /// The Rust proxy is an intermediate layer between the Rust object and the C++ proxy,
     /// forwarding calls in both directions and managing borrowing of the Rust object
     /// during C++ calls.
     type ProxyRust;
+
+    /// Creates a new `DynamicMetaObjectData` object and returns
+    /// a raw pointer to the heap-allocated object.
+    /// Ownership is not managed internally; the caller is responsible for it.
+    fn create_dynamic_meta_object_data_for_type() -> *const DynamicMetaObjectData {
+        let mut builder = crate::create_dynamic_meta_object_builder(
+            Self::class_name(),
+            <CppProxyOf<Self>>::get_static_meta_object());
+        Self::build_dynamic_meta_type(builder.pin_mut());
+        builder.pin_mut()
+            .take_dynamic_metaobject_data()
+    }
+
+    /// Return DynamicMetaObjectData containing information
+    /// about signals/slots/properties for given Rust object.
+    ///
+    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// default serves generic types and hand-written impls.
+    fn get_shared_dynamic_meta_object_data() -> &'static DynamicMetaObjectData {
+        dynamic_meta_object_data_for_generic::<Self>()
+    }
+
+    /// Returns the [`QMetaType`] for a pointer to this type (`Self *`).
+    ///
+    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// default serves generic types and hand-written impls.
+    fn get_qobject_ptr_qmetatype() -> QMetaType {
+        let iface = crate::qmetatypeforqobject::ptr_interface_for_generic::<Self>();
+        QMetaType::new_with_interface(iface as *const _)
+    }
 
     /// Return a pointer to the Rust proxy associated with the specified object,
     /// or `None` if no proxy is registered.
@@ -78,7 +111,7 @@ where
         // meta-object on top, it does not change the Rust type).
         let qobj_meta_obj = unsafe { qobj_ref.get_qmeta_object().as_ref() };
         let self_meta_obj = unsafe {
-            <Self as QMetaInfo>::get_shared_dynamic_meta_object_data().get_meta_object().as_ref()
+            Self::get_shared_dynamic_meta_object_data().get_meta_object().as_ref()
         };
         let inherits = match (qobj_meta_obj, self_meta_obj) {
             (Some(d), Some(b)) => d.inherits(b),
@@ -120,7 +153,7 @@ where
         let key = (*rust_obj_rc).as_ptr() as *const u8;
         let keep: Rc<RefCell<Self>> = rust_obj_rc.clone();
         let dyn_rc = <Self::ProxyRust as AdapterUpcast<Self>>::upcast(rust_obj_rc);
-        let dynamic_meta = <Self as QMetaInfo>::get_shared_dynamic_meta_object_data();
+        let dynamic_meta = Self::get_shared_dynamic_meta_object_data();
         let proxy = Self::ProxyRust::new(&dyn_rc, dynamic_meta, at_address, Box::new(move || {
             crate::registry::unregister(key);
         }));
@@ -129,4 +162,36 @@ where
         crate::registry::register(key, proxy as *const u8, qobject,
             Rc::<RefCell<Self>>::downgrade(&keep), owner);
     }
+}
+
+/// [`QObjectHolder::get_shared_dynamic_meta_object_data`] through a
+/// TypeId-keyed cache, for types where a per-type static is not available.
+pub fn dynamic_meta_object_data_for_generic<T: QObjectHolder>() -> &'static DynamicMetaObjectData
+where
+    T::ProxyRust: crate::qproxies::AdapterUpcast<T>,
+{
+    use std::any::TypeId;
+    use std::collections::HashMap;
+    thread_local!(static DYNAMIC_META_MAP: RefCell<HashMap<TypeId, *const DynamicMetaObjectData>> =
+        RefCell::new(HashMap::new()));
+
+    let type_id = TypeId::of::<T>();
+    {
+        let meta_data_ptr = DYNAMIC_META_MAP.with_borrow(|dynamic_meta_builder_map| {
+            dynamic_meta_builder_map.get(&type_id)
+                .copied()
+                .unwrap_or_default()
+        });
+        if let Some(meta_data_ref) = unsafe { meta_data_ptr.as_ref() } {
+            return meta_data_ref;
+        }
+    }
+
+    let meta_data_ptr = T::create_dynamic_meta_object_data_for_type();
+    let meta_data_ref = unsafe { meta_data_ptr.as_ref() }.unwrap();
+    DYNAMIC_META_MAP.with_borrow_mut(|dynamic_meta_builder_map| {
+        dynamic_meta_builder_map.insert(type_id, meta_data_ptr);
+    });
+
+    meta_data_ref
 }
