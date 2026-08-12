@@ -97,7 +97,7 @@ mod some_module {
             rust_obj_rc
         }
     }
-    impl qtbridge::qtbridge_runtime::QmlRegister for SomeStruct {
+    impl qtbridge::qtbridge_runtime::QmlElement for SomeStruct {
         const URI: &str = "qtbridge_gen";
         const ELEMENT_NAME: &str = "SomeStruct";
         const MINOR_VERSION: u8 = 2u8;

@@ -1,7 +1,7 @@
 // Copyright (C) 2026 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
-use qtbridge::{QmlRegister, qobject};
+use qtbridge::{QmlElement, qobject};
 
 #[derive(Default)]
 pub struct Backend {
@@ -15,7 +15,7 @@ impl Backend {
     }
 }
 
-impl QmlRegister for Backend {
+impl QmlElement for Backend {
     const URI: &str = "tst_qml_element";
     const ELEMENT_NAME: &str = "Backend";
     const MINOR_VERSION: u8 = 1u8;
@@ -35,7 +35,7 @@ impl SingletonBackend {
     }
 }
 
-impl QmlRegister for SingletonBackend {
+impl QmlElement for SingletonBackend {
     const URI: &str = "tst_qml_element";
     const ELEMENT_NAME: &str = "SingletonBackend";
     const MINOR_VERSION: u8 = 1u8;
@@ -45,13 +45,13 @@ impl QmlRegister for SingletonBackend {
 
 pub fn test_qml_element() {
 
-    <Backend as QmlRegister>::register();
+    <Backend as QmlElement>::register();
     // A repeated registration replaces the QML type module entry and is
     // otherwise without effect (QQmlTypeModule::add). Relevant when explicit
     // register() calls are combined with the automatic registration of the
     // `linkme` feature.
-    <Backend as QmlRegister>::register();
-    <SingletonBackend as QmlRegister>::register();
+    <Backend as QmlElement>::register();
+    <SingletonBackend as QmlElement>::register();
     // Not registering LinkMeBackend to trigger automatic registration
 
     use std::env;

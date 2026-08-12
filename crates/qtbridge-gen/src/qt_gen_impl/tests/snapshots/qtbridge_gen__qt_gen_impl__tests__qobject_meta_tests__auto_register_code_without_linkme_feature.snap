@@ -85,7 +85,7 @@ pub mod node {
             rust_obj_rc
         }
     }
-    impl qtbridge::qtbridge_runtime::QmlRegister for MyStruct {
+    impl qtbridge::qtbridge_runtime::QmlElement for MyStruct {
         const URI: &str = "qtbridge_gen";
         const ELEMENT_NAME: &str = "MyStruct";
         const MINOR_VERSION: u8 = 2u8;

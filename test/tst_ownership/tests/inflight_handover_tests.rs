@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use qtbridge::{QApp, QObjectHolder, QmlRegister, collect_garbage, qobject};
+use qtbridge::{QApp, QObjectHolder, QmlElement, collect_garbage, qobject};
 
 #[derive(Default)]
 pub struct Child {}

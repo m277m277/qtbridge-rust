@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use qtbridge_type_lib::{QGuiApplication, QQmlApplicationEngine, QVariantMap, QString};
-use qtbridge::{qobject, QObjectHolder, QmlRegister};
+use qtbridge::{qobject, QObjectHolder, QmlElement};
 
 #[qobject]
 pub mod widget {

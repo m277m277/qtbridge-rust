@@ -143,10 +143,10 @@ impl QObjectModuleBuilder {
         ];
 
         if !self.struct_is_generic() {
-            let qml_register = generate_qml_register(&self.struct_ident, &self.params)
-                .map_err(|err| syn::Error::new(err.span(), format!("Failed to generate implementation of QmlRegister trait.\nError: {}", err)))?;
-            if let Some(register_impl) = qml_register {
-                generated_traits.push(("QmlRegister", Ok(register_impl)));
+            let qml_element = generate_qml_register(&self.struct_ident, &self.params)
+                .map_err(|err| syn::Error::new(err.span(), format!("Failed to generate implementation of QmlElement trait.\nError: {}", err)))?;
+            if let Some(register_impl) = qml_element {
+                generated_traits.push(("QmlElement", Ok(register_impl)));
             }
         } else if self.params.singleton {
             return Err(syn::Error::new(self.struct_ident.span(), "Singleton is not available for generic structs.".to_string()));

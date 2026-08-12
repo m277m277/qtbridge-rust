@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use qtbridge::{QApp, QObjectHolder};
-use qtbridge::{QmlRegister, qobject};
+use qtbridge::{QmlElement, qobject};
 
 #[qobject]
 pub mod cat {

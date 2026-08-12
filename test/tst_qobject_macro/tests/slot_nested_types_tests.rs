@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 #![cfg(test)]
 use qtbridge::{QApp, QObjectHolder};
-use qtbridge::{QmlRegister, qobject};
+use qtbridge::{QmlElement, qobject};
 
 #[qobject]
 pub mod value {

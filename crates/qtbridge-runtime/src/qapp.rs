@@ -3,7 +3,7 @@
 
 use cxx::UniquePtr;
 use qtbridge_type_lib::{QGuiApplication, QQmlApplicationEngine, QString, QVariant, QVariantMap};
-use crate::qml_register::QmlRegister;
+use crate::qmlelement::QmlElement;
 
 /// Entry point for a QML application.
 ///
@@ -211,7 +211,7 @@ impl QApp {
     ///      }"#)
     ///     .run();
     /// ```
-    pub fn register<T: QmlRegister>(&mut self) -> &mut Self {
+    pub fn register<T: QmlElement>(&mut self) -> &mut Self {
         T::register();
         self
     }

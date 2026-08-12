@@ -9,7 +9,7 @@ use qtbridge_type_lib::{QList, QList_QString, QMetaType, QObject, QObjectList, Q
 #[cfg(feature = "serde_json")]
 use qtbridge_type_lib::{QJsonArray, QJsonValue};
 
-use crate::{QMetaInfo, QMetaTypeGet, QObjectHolder, QmlRegister};
+use crate::{QMetaInfo, QMetaTypeGet, QObjectHolder, QmlElement};
 
 /// Enables a type to be used as a meta call argument and to be convertible from/to QVariant.
 ///
@@ -18,7 +18,7 @@ use crate::{QMetaInfo, QMetaTypeGet, QObjectHolder, QmlRegister};
 /// - [`String`]
 /// - [`Vec<T>`] where `T` is one of the above
 /// - [`Rc<RefCell<T>>`] where `T` implements [`QObjectHolder`]
-/// - [`Vec<Rc<RefCell<T>>>`] where `T` implements [`QmlRegister`]
+/// - [`Vec<Rc<RefCell<T>>>`] where `T` implements [`QmlElement`]
 ///
 pub trait QMetaTypeCompatible {
     type CompatibleType: QMetaTypeGet;
@@ -143,7 +143,7 @@ impl<T: QObjectHolder> QMetaTypeCompatible for Rc<RefCell<T>> {
 }
 
 // The wire pointers share the in-flight guarantee of Rc<RefCell<T>> above.
-impl<T: QmlRegister> QMetaTypeCompatible for Vec<Rc<RefCell<T>>> {
+impl<T: QmlElement> QMetaTypeCompatible for Vec<Rc<RefCell<T>>> {
     type CompatibleType = QObjectList;
 
     fn to_compatible(&self) -> QObjectList {

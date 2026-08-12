@@ -10,7 +10,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use qtbridge::{QApp, QObjectHolder, QPropertyMember, QmlRegister, collect_garbage, qobject};
+use qtbridge::{QApp, QObjectHolder, QPropertyMember, QmlElement, collect_garbage, qobject};
 use qtbridge::qtbridge_type_lib::{
     QGuiApplication, QQmlApplicationEngine, QSignalSpy, QString, QVariantMap,
 };

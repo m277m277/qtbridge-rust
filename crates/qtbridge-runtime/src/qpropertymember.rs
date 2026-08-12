@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use qtbridge_type_lib::{QMetaType, QObjectMutPtr, QVariant};
 
-use crate::{QMetaInfo, QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlRegister, ToQVariant, TryFromQVariant};
+use crate::{QMetaInfo, QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlElement, ToQVariant, TryFromQVariant};
 
 /// Enables a type to be used as a property.
 ///
@@ -15,7 +15,7 @@ use crate::{QMetaInfo, QMetaTypeCompatible, QObjectHolder, QVariantConvertible, 
 /// - [`String`]
 /// - [`Vec<T>`] where `T` is one of the above
 /// - [`Rc<RefCell<T>>`] where `T` implements [`QObjectHolder`]
-/// - [`Vec<Rc<RefCell<T>>>`] where `T` implements [`QmlRegister`]
+/// - [`Vec<Rc<RefCell<T>>>`] where `T` implements [`QmlElement`]
 ///
 /// You will not need to implement this trait yourself; adding support for custom types requires CXX/C++ bindings.
 pub trait QPropertyMember: Sized {
@@ -93,7 +93,7 @@ impl<T: QObjectHolder> QPropertyMember for Rc<RefCell<T>> {
     }
 }
 
-impl<T: QmlRegister> QPropertyMember for Vec<Rc<RefCell<T>>> {
+impl<T: QmlElement> QPropertyMember for Vec<Rc<RefCell<T>>> {
     fn qmetatype() -> QMetaType {
         T::get_list_qmetatype()
     }

@@ -14,7 +14,7 @@ use qtbridge_type_lib::QMetaType;
 use qtbridge_type_lib::QMetaTypeInterface;
 use qtbridge_type_lib::{QVariant, list_property_to_qvariant};
 
-pub trait QmlRegister : QObjectHolder + Default
+pub trait QmlElement : QObjectHolder + Default
 {
     const URI: &str;
     const ELEMENT_NAME: &str;
@@ -109,26 +109,26 @@ pub trait QmlRegister : QObjectHolder + Default
     }
 }
 
-fn element_ctor<T: QmlRegister>(addr: *mut u8, _userdata: *mut u8) {
+fn element_ctor<T: QmlElement>(addr: *mut u8, _userdata: *mut u8) {
     let instance = std::rc::Rc::new(std::cell::RefCell::new(T::default()));
     T::register_instance_in_map(instance.clone(), Owner::Engine, Some(addr));
 }
 
-fn singleton_ctor<T: QmlRegister>() -> *mut QObject {
+fn singleton_ctor<T: QmlElement>() -> *mut QObject {
     let instance = std::rc::Rc::new(std::cell::RefCell::new(T::default()));
     T::register_instance_in_map(instance.clone(), Owner::Engine, None);
     instance.borrow().get_qobject_ptr()
 }
 
-fn monomorphize_element_ctor<T: QmlRegister>() -> usize {
-    extern "C" fn default_ctor<T: QmlRegister>(addr: *mut u8, userdata: *mut u8) {
+fn monomorphize_element_ctor<T: QmlElement>() -> usize {
+    extern "C" fn default_ctor<T: QmlElement>(addr: *mut u8, userdata: *mut u8) {
         element_ctor::<T>(addr, userdata)
     }
     default_ctor::<T> as *const () as usize
 }
 
-fn monomorphize_singleton_ctor<T: QmlRegister>() -> usize {
-    extern "C" fn default_ctor<T: QmlRegister>() -> *mut QObject {
+fn monomorphize_singleton_ctor<T: QmlElement>() -> usize {
+    extern "C" fn default_ctor<T: QmlElement>() -> *mut QObject {
         singleton_ctor::<T>()
     }
     default_ctor::<T> as *const () as usize

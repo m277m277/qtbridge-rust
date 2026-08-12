@@ -37,7 +37,7 @@ pub mod special_traits {
 /// traits yourself. As a user, you should only interact with:
 ///
 /// * [`QObjectHolder`]
-/// * [`QmlRegister`] (only non-generic types)
+/// * [`QmlElement`] (only non-generic types)
 ///
 /// This macro makes it possible to declare the following items within the
 /// `impl` block:
@@ -71,7 +71,7 @@ pub mod special_traits {
 /// or expanded with [`attach_qobject`](QObjectHolder::attach_qobject). This is not necessary if
 /// the struct is instantiated in QML.
 ///
-/// When [`register`](QmlRegister::register) is called, the macro creates a QML
+/// When [`register`](QmlElement::register) is called, the macro creates a QML
 /// module whose name matches your Cargo package name. So for a `Cargo.toml` with
 /// ```toml
 /// [package]
@@ -89,7 +89,7 @@ pub mod special_traits {
 /// ## Requirements
 ///
 /// A `struct` using [`qobject`] must implement the [`Default`] trait.
-/// The static function [`register`](QmlRegister::register) has to be called at the start of the
+/// The static function [`register`](QmlElement::register) has to be called at the start of the
 /// main function to make this `struct` instantiable from QML.
 ///
 /// ## Parameters
@@ -109,20 +109,20 @@ pub mod special_traits {
 ///
 /// **NoQmlElement**
 ///
-/// Do not implement [`QmlRegister`]. [`QmlRegister`] registers the `struct` in the QML type system,
+/// Do not implement [`QmlElement`]. [`QmlElement`] registers the `struct` in the QML type system,
 /// allowing you to instantiate this type in QML. The `NoQmlElement` option can be useful to turn off
 /// instantiatability within QML or to provide a manual implementation of this trait with better control
 /// over naming and versioning.
 ///
 /// **Singleton**
 ///
-/// Implement [`QmlRegister`] as a [singleton](https://doc.qt.io/qt-6/qml-singleton.html). A singleton
+/// Implement [`QmlElement`] as a [singleton](https://doc.qt.io/qt-6/qml-singleton.html). A singleton
 /// is accessed from QML as a single shared instance of the type, using the type name as identifier.
 /// This is useful for application-wide data, global settings, or service objects.
 ///
 /// ## Automatic registration
 ///
-/// When the `linkme` cargo feature is enabled, [`register`](QmlRegister::register) is called at
+/// When the `linkme` cargo feature is enabled, [`register`](QmlElement::register) is called at
 /// application start for every annotated type without any additional code. The crate
 /// [`Linkme`](https://crates.io/crates/linkme) is used for this purpose:
 ///
@@ -132,7 +132,7 @@ pub mod special_traits {
 ///
 /// The feature applies to every type annotated with [`qobject`] in the whole application,
 /// including its dependencies. Types annotated with `NoQmlElement` are exempt, as they do
-/// not implement [`QmlRegister`].
+/// not implement [`QmlElement`].
 ///
 /// ## Example
 ///
@@ -422,18 +422,18 @@ pub use qtbridge_runtime::{QApp, qresource, QmlMethodInvoker};
 #[doc(inline)]
 pub use qtbridge_runtime::QObjectHolder;
 
-/// QmlRegister enables QML to instantiate types of this trait.
+/// QmlElement enables QML to instantiate types of this trait.
 ///
 /// The trait is usually implemented by [`qobject`]. If you
 /// want to implement this trait manually, you have to add the `NoQmlElement`
 /// option.
 ///
-/// [`QmlRegister`] defines the [`ELEMENT_NAME`](QmlRegister::ELEMENT_NAME)
+/// [`QmlElement`] defines the [`ELEMENT_NAME`](QmlElement::ELEMENT_NAME)
 /// with which the `struct` can be instantiated in QML and the module name,
-/// [`URI`](QmlRegister::URI), which has to be used as import in QML to
+/// [`URI`](QmlElement::URI), which has to be used as import in QML to
 /// use this `struct`.
 ///
-/// [`QmlRegister`] knows two ways of registering a type. The ordinary way
+/// [`QmlElement`] knows two ways of registering a type. The ordinary way
 /// is to register as an element that can be instantiated in QML:
 ///
 /// ```rust
@@ -449,7 +449,7 @@ pub use qtbridge_runtime::QObjectHolder;
 ///         println!("Hello World!")
 ///     }
 /// }
-/// impl qtbridge::qtbridge_runtime::QmlRegister for Backend {
+/// impl qtbridge::qtbridge_runtime::QmlElement for Backend {
 ///     const URI: &str = "rust_backend";
 ///     const ELEMENT_NAME: &str = "Backend";
 ///     const MINOR_VERSION: u8 = 0u8;
@@ -470,10 +470,10 @@ pub use qtbridge_runtime::QObjectHolder;
 /// }
 /// ```
 ///
-/// Alternatively, by setting [`IS_SINGLETON`](QmlRegister::IS_SINGLETON)
+/// Alternatively, by setting [`IS_SINGLETON`](QmlElement::IS_SINGLETON)
 /// to true, the type is registered as a singleton. That means that only
 /// one instance can be created. It can be accessed with the
-/// [`ELEMENT_NAME`](QmlRegister::ELEMENT_NAME):
+/// [`ELEMENT_NAME`](QmlElement::ELEMENT_NAME):
 ///
 /// ```rust
 /// # use qtbridge::qobject;
@@ -488,7 +488,7 @@ pub use qtbridge_runtime::QObjectHolder;
 ///         println!("Hello World!")
 ///     }
 /// }
-/// impl qtbridge::qtbridge_runtime::QmlRegister for Backend {
+/// impl qtbridge::qtbridge_runtime::QmlElement for Backend {
 ///     const URI: &str = "rust_backend";
 ///     const ELEMENT_NAME: &str = "Backend";
 ///     const MINOR_VERSION: u8 = 0u8;
@@ -506,13 +506,13 @@ pub use qtbridge_runtime::QObjectHolder;
 /// }
 /// ```
 ///
-/// Further, [`MAJOR_VERSION`](QmlRegister::MAJOR_VERSION) and
-/// [`MINOR_VERSION`](QmlRegister::MINOR_VERSION) define the version of the
+/// Further, [`MAJOR_VERSION`](QmlElement::MAJOR_VERSION) and
+/// [`MINOR_VERSION`](QmlElement::MINOR_VERSION) define the version of the
 /// QML module. These fields are mandatory but QML can load a module without
 /// specifying the version
 ///
 #[doc(inline)]
-pub use qtbridge_runtime::QmlRegister;
+pub use qtbridge_runtime::QmlElement;
 
 pub use qtbridge_gen::QModelItem;
 

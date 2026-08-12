@@ -1,7 +1,7 @@
 // Copyright (C) 2026 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 #![cfg(test)]
-use qtbridge::{QmlRegister, qobject};
+use qtbridge::{QmlElement, qobject};
 use quicktest::quick_test_main;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");

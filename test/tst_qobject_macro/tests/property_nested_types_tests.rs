@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use qtbridge::{QObjectHolder, QmlRegister, qobject};
+use qtbridge::{QObjectHolder, QmlElement, qobject};
 use quicktest::quick_test_main;
 
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");

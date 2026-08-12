@@ -46,7 +46,7 @@ mod some_module {
             qtbridge::qt_type_lib::QMetaType::new_with_interface(iface as *const _)
         }
     }
-    impl qtbridge::bridge::QmlRegister for SomeStruct {
+    impl qtbridge::bridge::QmlElement for SomeStruct {
         const URI: &str = "qt_gen";
         const ELEMENT_NAME: &str = "SomeStruct";
         const MINOR_VERSION: u8 = 1u8;
