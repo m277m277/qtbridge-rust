@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
 use std::mem;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 
 #[macro_export]
@@ -70,25 +70,16 @@ macro_rules! call_cpp_impl {
 /// a reference on the way back, avoiding a second borrow while preserving a
 /// valid borrow stack per the "Stacked Borrows" aliasing model.
 pub struct RustObjAccess<T: ?Sized> {
-    shared_reference: SharedReferenceWithQml<T>,
+    /// The strong reference that keeps the Rust object alive: a value
+    /// lives exactly as long as its proxy pair, plus any user handles.
+    shared_reference: Rc<RefCell<T>>,
     borrow: Cell<BorrowState<T>>,
 }
 
 impl<T: ?Sized> RustObjAccess<T> {
-    /// Create an instance that hold a strong reference to the Rust object.
-    /// This is the case for objects created on the QML Side (QML Element).
-    pub fn new_strong(ptr: Rc<RefCell<T>>) -> Self {
+    pub fn new(ptr: Rc<RefCell<T>>) -> Self {
         Self {
-            shared_reference: SharedReferenceWithQml::OwnedByQml(ptr),
-            borrow: Cell::new(BorrowState::None),
-        }
-    }
-
-    /// Create an instance that holds a weak (`Weak<RefCell<T>>`) reference to the Rust object.
-    /// This is the case for objects created on the Rust Side.
-    pub fn new_weak(ptr: Weak<RefCell<T>>) -> Self {
-        Self {
-            shared_reference: SharedReferenceWithQml::OwnedByRust(ptr),
+            shared_reference: ptr,
             borrow: Cell::new(BorrowState::None),
         }
     }
@@ -103,8 +94,8 @@ impl<T: ?Sized> RustObjAccess<T> {
             BorrowState::Immutable(ptr) => Ok(f(unsafe { &**ptr })),
             BorrowState::Mutable(ptr) => Ok(f(unsafe { &**ptr })),
             BorrowState::None => {
-                let rc = self.shared_reference.get_rc()
-                    .ok_or(RustObjAccessError::ExpiredWeakPtr)?;
+                // Protect from a garbage collection.
+                let rc = self.shared_reference.clone();
                 let ref_guarded = rc.try_borrow()
                     .map_err(|err| RustObjAccessError::BorrowError(err))?;
                 Ok(f(&*ref_guarded))
@@ -122,8 +113,8 @@ impl<T: ?Sized> RustObjAccess<T> {
             BorrowState::Mutable(ptr) => Ok(f(unsafe { &mut **ptr })),
             BorrowState::Immutable(_) => Err(RustObjAccessError::BorrowConflict),
             BorrowState::None => {
-                let rc = self.shared_reference.get_rc()
-                    .ok_or(RustObjAccessError::ExpiredWeakPtr)?;
+                // Protect from a garbage collection.
+                let rc = self.shared_reference.clone();
                 let mut ref_guarded = rc.try_borrow_mut()
                     .map_err(|err| RustObjAccessError::BorrowMutError(err))?;
                 Ok(f(&mut *ref_guarded))
@@ -136,7 +127,7 @@ impl<T: ?Sized> RustObjAccess<T> {
         F: FnOnce() -> R,
     {
         assert!(
-            self.shared_reference.contains(rust_obj),
+            self.contains(rust_obj),
             "The rust_obj you want to call a function on does not match the shared reference."
         );
         let guard = BorrowState::store(&self.borrow, rust_obj);
@@ -152,7 +143,7 @@ impl<T: ?Sized> RustObjAccess<T> {
         F: FnOnce() -> R,
     {
         assert!(
-            self.shared_reference.contains(rust_obj),
+            self.contains(rust_obj),
             "The rust_obj you want to call a function on does not match the shared reference."
         );
         let guard = BorrowState::store_mut(&self.borrow, rust_obj);
@@ -163,8 +154,14 @@ impl<T: ?Sized> RustObjAccess<T> {
         Ok(f())
     }
 
-    pub fn get_rc(&self) -> Option<Rc<RefCell<T>>> {
-        self.shared_reference.get_rc()
+    pub fn get_rc(&self) -> Rc<RefCell<T>> {
+        self.shared_reference.clone()
+    }
+
+    fn contains(&self, obj: &T) -> bool {
+        let expected = self.shared_reference.as_ptr() as *const ();
+        let actual = obj as *const T as *const ();
+        expected == actual
     }
 }
 
@@ -214,35 +211,4 @@ pub enum RustObjAccessError {
     BorrowError(std::cell::BorrowError),
     BorrowMutError(std::cell::BorrowMutError),
     BorrowConflict,
-    ExpiredWeakPtr,
-}
-
-/// Represents how a Rust object is shared between Rust and QML.
-enum SharedReferenceWithQml<T: ?Sized> {
-    /// Holds a weak reference to the Rust object.
-    /// The object is dropped once there are no remaining strong references
-    /// on the Rust side.
-    OwnedByRust(Weak<RefCell<T>>),
-
-    /// Holds a strong reference to the Rust object.
-    /// Even if Rust no longer keeps any references, the object will remain
-    /// alive as long as it is still referenced from QML
-    /// (until the corresponding QObject is destroyed by the QML engine).
-    OwnedByQml(Rc<RefCell<T>>),
-}
-
-impl<T: ?Sized> SharedReferenceWithQml<T> {
-    fn get_rc(&self) -> Option<Rc<RefCell<T>>> {
-        match self {
-            SharedReferenceWithQml::OwnedByRust(weak) => weak.upgrade(),
-            SharedReferenceWithQml::OwnedByQml(rc) => Some(rc.clone()),
-        }
-    }
-
-    fn contains(&self, obj: &T) -> bool {
-        let Some(rc) = self.get_rc() else { return false };
-        let expected = rc.as_ptr() as *const ();
-        let actual = obj as *const T as *const ();
-        expected == actual
-    }
 }

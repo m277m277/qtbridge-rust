@@ -10,12 +10,10 @@ use std::cell::RefCell;
 use std::pin::Pin;
 
 
-pub enum ConstructionMode {
-    Strong,
-    Weak,
-    AtAddress(*mut u8),
-}
-
+/// Address of engine-allocated memory in which a C++ proxy is
+/// placement-constructed. QML-created elements pass `Some`; Rust-created
+/// objects pass `None` and allocate on the C++ heap.
+pub type PlacementAddress = *mut u8;
 
 /// `QCppProxy` defines what a C++ proxy to a QObject (C++) must implement.
 ///
@@ -28,7 +26,7 @@ pub trait QCppProxy {
     fn get_align() -> usize;
     fn parser_status_cast() -> i32;
     unsafe fn create(rust_proxy: *mut Self::ProxyRustType, metaobject: &'static DynamicMetaObjectData) -> *mut Self;
-    unsafe fn create_at(rust_proxy: *mut Self::ProxyRustType, metaobject: &'static DynamicMetaObjectData, addr: *mut u8) -> *mut Self;
+    unsafe fn create_at(rust_proxy: *mut Self::ProxyRustType, metaobject: &'static DynamicMetaObjectData, addr: PlacementAddress) -> *mut Self;
     fn emit_signal(self: Pin<&mut Self>, signal_name: &str, argv: &[*const u8]);
 }
 
@@ -76,13 +74,8 @@ pub trait QCppProxy {
 /// the stored `on_drop` callback, and then drops this instance along with its reference to the
 /// Rust object.
 ///
-/// The reference held to the user's Rust object is either strong (`Rc`) or weak (`Weak`),
-/// depending on the [`ConstructionMode`] passed to [`QRustProxy::new`]:
-///
-/// - `Strong` / `AtAddress` - proxy holds a strong `Rc`; the proxy pair keeps the Rust object
-///   alive (QML-created / OwnedByQml path).
-/// - `Weak` - proxy holds only a `Weak` reference; the Rust `Rc` controls the struct's lifetime
-///   (Rust-created / OwnedByRust path).
+/// The proxy always holds a strong `Rc` to the user's Rust object: the
+/// object lives exactly as long as its proxy pair, plus any user handles.
 ///
 /// # Associated Types
 ///
@@ -103,11 +96,11 @@ pub trait QRustProxy {
     /// Creates a new instance of this struct on the heap and returns a raw pointer to it.
     ///
     /// Initializes the proxy pair by:
-    /// - Creating a `RustObjAccess` wrapper for `rust_obj`, holding either a strong or weak
-    ///   reference depending on `construction` (see [`ConstructionMode`]).
-    /// - Constructing the paired C++ proxy and binding it to this Rust-side proxy.
+    /// - Creating a `RustObjAccess` wrapper holding a strong reference to `rust_obj`.
+    /// - Constructing the paired C++ proxy: with placement new at `at_address`
+    ///   if given (QML-created elements), on the heap otherwise.
     /// - Storing `on_drop` for invocation when the C++ proxy is eventually destroyed.
-    fn new(rust_obj: &Rc<RefCell<Self::AdapterType>>, metaobject: &'static DynamicMetaObjectData, construction: &ConstructionMode, on_drop: Box<dyn FnOnce() + 'static>) -> *mut Self;
+    fn new(rust_obj: &Rc<RefCell<Self::AdapterType>>, metaobject: &'static DynamicMetaObjectData, at_address: Option<PlacementAddress>, on_drop: Box<dyn FnOnce() + 'static>) -> *mut Self;
     fn get_cpp_proxy(&self) -> *const Self::ProxyCppType;
     fn get_cpp_proxy_mut(&self) -> *mut Self::ProxyCppType;
     fn emit_signal(&self, mut_ref: &mut Self::AdapterType, signal_name: &str, argv: &[*const u8]);
@@ -119,5 +112,5 @@ pub trait QRustProxy {
     /// object). The handle is typed as the adapter trait object; recovering the
     /// concrete type requires a checked reinterpret (see
     /// `QObjectHolder::qobject_to_rc_ref_cell`).
-    fn get_rust_object_rc(&self) -> Option<Rc<RefCell<Self::AdapterType>>>;
+    fn get_rust_object_rc(&self) -> Rc<RefCell<Self::AdapterType>>;
 }

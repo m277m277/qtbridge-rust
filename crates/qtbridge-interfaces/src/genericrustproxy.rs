@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
 use crate::{RustObjAccess, call_rust_trait_impl, call_cpp_impl};
-use qtbridge_runtime::qproxies::{QRustProxy, QCppProxy, ConstructionMode};
+use qtbridge_runtime::qproxies::{QRustProxy, QCppProxy, PlacementAddress};
 use qtbridge_runtime::{DispatchMetaCall, DynamicMetaObjectData};
 use qtbridge_type_lib::QVariant;
 use std::cell::RefCell;
@@ -25,26 +25,19 @@ where
     fn new(
         rust_obj: &Rc<RefCell<Adapter>>,
         metatype: &'static DynamicMetaObjectData,
-        construct: &ConstructionMode,
+        at_address: Option<PlacementAddress>,
         on_drop: Box<dyn FnOnce() + 'static>,
     ) -> *mut Self {
         let boxed_self = Box::new(Self {
             cpp_proxy: std::ptr::null_mut(),
-            rust_obj: match construct {
-                ConstructionMode::Strong | ConstructionMode::AtAddress(_) =>
-                    RustObjAccess::new_strong(rust_obj.clone()),
-                ConstructionMode::Weak =>
-                    RustObjAccess::new_weak(Rc::downgrade(rust_obj)),
-            },
+            rust_obj: RustObjAccess::new(rust_obj.clone()),
             on_drop,
         });
         let raw_self = Box::into_raw(boxed_self);
         unsafe {
-            (*raw_self).cpp_proxy = match construct {
-                ConstructionMode::AtAddress(addr) =>
-                    CppProxy::create_at(raw_self, metatype, *addr),
-                ConstructionMode::Strong | ConstructionMode::Weak =>
-                    CppProxy::create(raw_self, metatype),
+            (*raw_self).cpp_proxy = match at_address {
+                Some(addr) => CppProxy::create_at(raw_self, metatype, addr),
+                None => CppProxy::create(raw_self, metatype),
             }
         };
         raw_self
@@ -74,7 +67,7 @@ where
             .expect("Failed to access Rust object via mutable handle")
     }
 
-    fn get_rust_object_rc(&self) -> Option<Rc<RefCell<Adapter>>> {
+    fn get_rust_object_rc(&self) -> Rc<RefCell<Adapter>> {
         self.rust_obj.get_rc()
     }
 }

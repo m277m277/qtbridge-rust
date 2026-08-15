@@ -1,23 +1,36 @@
 // Copyright (C) 2026 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
-//! The owner of record for every Rust-created `#[qobject]` instance, and
-//! the proxy table for every attached object, Rust- or QML-created.
+//! The bridge's object index and deletion policy.
 //!
-//! The registry holds one strong reference per attached object, so user
-//! handles are plain [`Rc<RefCell<T>>`]s whose drops never tear anything
-//! down and T cannot be moved out of its original place; `QObject`s are
-//! explicit `CppOwnership` while Rust references them, so the QML engine
-//! cannot delete them.
+//! Liveness is not held here: every attached object is kept alive by its
+//! proxy, so a Rust value lives exactly as long as its `QObject`, plus any
+//! user handles, which are plain `Rc<RefCell<T>>`s whose drops never
+//! tear anything down. The registry observes each object through a `Weak`
+//! reference and decides when the `QObject`s of Rust-created objects die.
 //!
-//! The QML engine keeps the JS wrapper of a `CppOwnership` object alive for
-//! the whole object lifetime. [`collect_garbage`] therefore frees objects
-//! without Rust interest (strong count is down to the registry's own)
-//! directly when the engine never wrapped them, and otherwise hands ownership
-//! to the engine by setting `JavaScriptOwnership`. The engine's garbage collector
-//! deletes them with exact reachability and takes down the reference together
-//! with the proxy. An object that re-enters Rust and clones the
-//! [`Rc<RefCell<T>>`] from the proxy is changed back to `CppOwnership`.
+//! Every entry names its [`Owner`]:
+//!
+//! * [`Owner::RustRegistry`]: Rust-created. Pinned to `CppOwnership` while
+//!   Rust holds a handle, so the QML engine cannot delete it. The engine
+//!   keeps the JS wrapper of a `CppOwnership` object alive for the whole
+//!   object lifetime. [`collect_garbage`] therefore hands ownership to the
+//!   engine by setting `JavaScriptOwnership` for objects without Rust
+//!   interest (strong count is down to the proxy's own). The engine's
+//!   garbage collector deletes them with exact reachability and takes
+//!   down the value together with the proxy. An object that re-enters Rust
+//!   is changed back to `CppOwnership`. Objects that were never wrapped
+//!   with a JS wrapper are deleted directly when Rust interest vanishes.
+//! * [`Owner::Engine`]: QML-created. The engine (or a parent) deletes the
+//!   `QObject`; the registry never does, and the entry only serves the
+//!   proxy lookup.
+//!
+//! The `CppOwnership` flag guards only against the garbage collector:
+//! deletion paths that ignore the ownership flag (parents, components,
+//! engine death) can take a `QObject` of either kind. The registry entry
+//! is deleted together with the `QObject` but the Rust value then survives
+//! through user handles and gets a fresh `QObject` with `Owner::RustRegistry`
+//! attached on its next exposure.
 //!
 //! [`collect_garbage`] is triggered by the garbage collection of the
 //! QmlEngine and under allocation pressure (see `register`).
@@ -28,7 +41,7 @@
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::Weak;
 
 use qtbridge_type_lib::QObject;
 
@@ -82,15 +95,28 @@ pub fn install_gc_sentinel(engine: core::pin::Pin<&mut qtbridge_type_lib::QQmlAp
     ffi::install_gc_sentinel_impl(engine);
 }
 
+/// ownership indicator:
+ #[derive(Clone, PartialEq)]
+ pub enum Owner {
+    /// The registry: pinned to `CppOwnership` while Rust holds a handle,
+    /// changed to `JavaScriptOwnership` by [`collect_garbage`] and then
+    /// finally deleted by the QML engine.
+    RustRegistry,
+    /// The QML engine which deletes its own objects.
+    Engine,
+}
+
 struct Entry {
     /// Type-erased pointer to the object's `RustProxy`.
     proxy: *const u8,
     /// The attached [`QObject`]. Valid for as long as the entry exists: its
     /// deletion tears down the proxy, whose `on_drop` unregisters the entry.
     qobject: *mut QObject,
-    /// Shared reference counter to observe Rust usage and guarantee
-    /// liveness. `None` for QML-created objects, which the engine owns.
-    shared_owner: Option<Rc<dyn Any>>,
+    /// Observe Rust usage. RustProxy holds the strong reference and
+    /// guarantees liveness.
+    value: Weak<dyn Any>,
+    /// Initiator of deletion of this entry:
+    owner: Owner,
 }
 
 /// Entries keyed by the address of the user value.
@@ -103,12 +129,9 @@ struct Entries {
 
 impl Drop for Entries {
     fn drop(&mut self) {
-        // Thread teardown: free the objects we own; QObjects without a
-        // `shared_owner` are the engine's (or a parent's) to delete.
         for (_, entry) in self.map.drain() {
-            if let Some(owner) = entry.shared_owner {
-                QObject::delete(entry.qobject); // Deletes both proxies
-                drop(owner);
+            if entry.owner == Owner::RustRegistry {
+                QObject::delete(entry.qobject);  // Deletes both proxies
             }
         }
     }
@@ -126,23 +149,23 @@ fn owned_count() -> usize {
     REGISTRY.with_borrow(|entries| entries.owned)
 }
 
-/// Registers an attached object; `shared_owner` is set for Rust-created
-/// objects, which the registry owns.
+/// Registers an attached object
 pub(crate) fn register(
-    key: *const u8, proxy: *const u8, qobject: *mut QObject, shared_owner: Option<Rc<dyn Any>>,
+    key: *const u8, proxy: *const u8, qobject: *mut QObject,
+    value: Weak<dyn Any>, owner: Owner
 ) {
-    let owned = shared_owner.is_some();
-    if owned {
+    let registry_owned = owner == Owner::RustRegistry;
+    if registry_owned {
         unsafe { ffi::set_cpp_ownership(qobject) };
     }
     REGISTRY.with_borrow_mut(|entries| {
-        let old = entries.map.insert(key, Entry { proxy, qobject, shared_owner });
+        let old = entries.map.insert(key, Entry { proxy, qobject, value, owner });
         debug_assert!(old.is_none(), "Object is already registered");
-        entries.owned += owned as usize;
+        entries.owned += registry_owned as usize;
     });
     // If we reach a certain amount of QObjects, we will trigger a collect to
     // clean up stale objects.
-    if owned && owned_count() >= COLLECT_THRESHOLD.get() {
+    if registry_owned && owned_count() >= COLLECT_THRESHOLD.get() {
         collect_garbage();
     }
 }
@@ -151,7 +174,7 @@ pub(crate) fn register(
 pub(crate) fn repin(key: *const u8) {
     REGISTRY.with_borrow(|entries| {
         if let Some(entry) = entries.map.get(&key) {
-            if entry.shared_owner.is_some() {
+            if entry.owner == Owner::RustRegistry {
                 unsafe { ffi::set_cpp_ownership(entry.qobject) };
             }
         }
@@ -166,7 +189,7 @@ pub(crate) fn unregister(key: *const u8) {
     let _ = REGISTRY.try_with(|entries: &RefCell<Entries>| {
         let mut entries = entries.borrow_mut();
         if let Some(entry) = entries.map.remove(&key) {
-            entries.owned -= entry.shared_owner.is_some() as usize;
+            entries.owned -= (entry.owner == Owner::RustRegistry) as usize;
         }
     });
 }
@@ -208,29 +231,32 @@ pub fn collect_garbage() {
     loop {
         // Extract first, act outside the borrow: deleting a QObject
         // re-enters the registry through the proxy teardown's unregister.
-        let doomed: Vec<(Rc<dyn Any>, *mut QObject)> = REGISTRY.with_borrow_mut(|entries| {
+        let doomed: Vec<(Weak<dyn Any>, *mut QObject)> = REGISTRY.with_borrow_mut(|entries| {
             let extracted: Vec<_> = entries.map.extract_if(|_key, entry| {
-                    let Some(owner) = &entry.shared_owner else {
+                    if entry.owner == Owner::Engine {
                         return false;
-                    };
-                    if Rc::strong_count(owner) > 1
-                        || unsafe { ffi::is_javascript_ownership(entry.qobject) } {
+                    }
+                    debug_assert!(entry.value.strong_count() >= 1);
+                    if entry.value.strong_count() > 1 {
+                        return false;
+                    }
+                    if unsafe { ffi::is_javascript_ownership(entry.qobject) } {
                         return false;
                     }
                     if unsafe { ffi::has_live_js_wrapper(entry.qobject) } {
-                        // The wrapper of a CppOwned object never dies: hand
-                        // the object to the engine, whose exact
-                        // reachability decides. Its deletion runs the
-                        // proxy teardown like any other.
+                        // The wrapper of a CppOwned object never dies and we can
+                        // therefore not track QML interest into the object. Hand
+                        // the object to the engine in order to check QML interest.
+                        // The engine will initiate the teardown.
                         unsafe { ffi::set_javascript_ownership(entry.qobject) };
                         return false;
                     }
+                    // No Rust interest (Only strong reference is in the proxy)
+                    // No QML interest (No JS Wrapper)
                     true
                 })
                 .map(|(_key, entry)| {
-                    let owner = entry.shared_owner
-                        .expect("Only owned entries are extracted");
-                    (owner, entry.qobject)
+                    (entry.value, entry.qobject)
                 })
                 .collect();
             entries.owned -= extracted.len();
@@ -239,13 +265,16 @@ pub fn collect_garbage() {
         if doomed.is_empty() {
             break;
         }
-        for (shared_reference, qobject) in doomed {
+        for (value, qobject) in doomed {
+            // Ensure that the Rust object is alive for the whole destructor
+            let keep_alive = value.upgrade();
+            assert!(!keep_alive.is_none());
             // Tears down the proxy pair; its on_drop removes the registry
             // entry.
             QObject::delete(qobject);
             // Ours is the last reference: this frees the Rust object,
             // running a user-provided Drop if there is one.
-            drop(shared_reference);
+            drop(keep_alive);
         }
     }
     // Update the threshold on when we automatically collect QObjects.

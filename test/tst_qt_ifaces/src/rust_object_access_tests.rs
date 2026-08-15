@@ -12,16 +12,9 @@ use qtbridge_interfaces::object_access::rust_object_access::{RustObjAccess, Rust
 // ---------------------------------------------------------------------------
 
 #[test]
-fn require_that_new_strong_creates_an_instance() {
+fn require_that_new_creates_an_instance() {
     let rc = Rc::new(RefCell::new(0i32));
-    let _instance = RustObjAccess::new_strong(rc);
-}
-
-#[test]
-fn require_that_new_weak_creates_an_instance() {
-    let rc = Rc::new(RefCell::new(0i32));
-    let weak = Rc::downgrade(&rc);
-    let _instance = RustObjAccess::new_weak(weak);
+    let _instance = RustObjAccess::new(rc);
 }
 
 // ---------------------------------------------------------------------------
@@ -31,7 +24,7 @@ fn require_that_new_weak_creates_an_instance() {
 #[test]
 fn require_that_try_call_rust_with_handle_invokes_function_with_value_and_succeeds_when_function_is_not_recursive() {
     let rc = Rc::new(RefCell::new(42));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
 
     let result = instance.try_call_rust_with_handle(|value| value * 2).unwrap();
     assert_eq!(result, 84);
@@ -40,10 +33,42 @@ fn require_that_try_call_rust_with_handle_invokes_function_with_value_and_succee
 #[test]
 fn require_that_try_call_rust_with_handle_mut_invokes_function_and_succeeds_when_function_is_not_recursive() {
     let rc = Rc::new(RefCell::new(42));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
 
     assert_eq!(true, instance.try_call_rust_with_handle_mut(|value| *value += 1).is_ok());
     assert_eq!(*rc.borrow(), 43);
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch counts as Rust interest
+//
+// A running call holds an extra strong reference on purpose: the registry's
+// collector spares objects with a strong count above the proxy's own, so an
+// executing dispatch must be visible in the count.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn require_that_a_running_call_holds_an_extra_strong_reference() {
+    let rc = Rc::new(RefCell::new(43));
+    let weak = Rc::downgrade(&rc);
+    let instance = RustObjAccess::new(rc);
+    assert_eq!(weak.strong_count(), 1);
+    instance.try_call_rust_with_handle(|_| {
+        assert_eq!(weak.strong_count(), 2);
+    }).unwrap();
+    assert_eq!(weak.strong_count(), 1);
+}
+
+#[test]
+fn require_that_a_running_mutable_call_holds_an_extra_strong_reference() {
+    let rc = Rc::new(RefCell::new(43));
+    let weak = Rc::downgrade(&rc);
+    let instance = RustObjAccess::new(rc);
+    assert_eq!(weak.strong_count(), 1);
+    instance.try_call_rust_with_handle_mut(|_| {
+        assert_eq!(weak.strong_count(), 2);
+    }).unwrap();
+    assert_eq!(weak.strong_count(), 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +84,7 @@ struct RecursionChecker {
 impl RecursionChecker {
     pub fn new(obj: Rc<RefCell<i32>>) -> Self {
         Self {
-            value: RustObjAccess::new_strong(obj)
+            value: RustObjAccess::new(obj)
         }
     }
 
@@ -84,12 +109,12 @@ fn require_that_borrowing_immutably_recursively_succeeds() {
 
 // In RustObjAccess, direct mutable recursion is blocked: consume() sets state
 // to None, so re-entry tries RefCell::try_borrow_mut() which fails because the
-// outer RefMut is still on the stack. This is intentional — it prevents aliasing UB.
+// outer RefMut is still on the stack. This is intentional: it prevents aliasing UB.
 
 #[test]
 fn require_that_borrowing_mutably_recursively_fails() {
     let rc = Rc::new(RefCell::new(10));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let result = instance.try_call_rust_with_handle_mut(|value| {
         *value += 1;
         instance.try_call_rust_with_handle_mut(|_| {})
@@ -105,7 +130,7 @@ fn require_that_borrowing_mutably_recursively_fails() {
 #[test]
 fn require_that_borrowing_immutably_within_mutable_borrow_fails() {
     let rc = Rc::new(RefCell::new(10));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let result = instance.try_call_rust_with_handle_mut(|_| {
         instance.try_call_rust_with_handle(|_| {})
     });
@@ -121,7 +146,7 @@ fn require_that_borrowing_immutably_within_mutable_borrow_fails() {
 #[test]
 fn require_that_try_call_rust_with_handle_mut_within_try_call_rust_with_handle_fails() {
     let rc = Rc::new(RefCell::new(0));
-    let instance = RustObjAccess::new_strong(rc);
+    let instance = RustObjAccess::new(rc);
     let result = instance.try_call_rust_with_handle(|_| {
         instance.try_call_rust_with_handle_mut(|_| {})
             .expect_err("Expected to be borrowed")
@@ -137,7 +162,7 @@ fn require_that_try_call_rust_with_handle_mut_within_try_call_rust_with_handle_f
 #[test]
 fn require_that_try_borrow_original_ref_cell_succeeds_when_called_within_try_call_rust_with_handle() {
     let rc = Rc::new(RefCell::new(36));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     instance.try_call_rust_with_handle(|_| {
         let nested_borrow_result = rc.try_borrow();
         assert!(nested_borrow_result.is_ok());
@@ -148,7 +173,7 @@ fn require_that_try_borrow_original_ref_cell_succeeds_when_called_within_try_cal
 #[test]
 fn require_that_try_borrow_from_original_ref_cell_fails_when_called_within_try_call_rust_with_handle_mut() {
     let rc = Rc::new(RefCell::new(37));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     instance.try_call_rust_with_handle_mut(|_| {
         let nested_borrow_result = rc.try_borrow();
         assert!(nested_borrow_result.is_err());
@@ -158,7 +183,7 @@ fn require_that_try_borrow_from_original_ref_cell_fails_when_called_within_try_c
 #[test]
 fn require_that_try_borrow_mut_from_original_ref_cell_fails_when_called_within_try_call_rust_with_handle_mut() {
     let rc = Rc::new(RefCell::new(39));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     instance.try_call_rust_with_handle_mut(|_| {
         let nested_borrow_result = rc.try_borrow_mut();
         assert!(nested_borrow_result.is_err());
@@ -168,7 +193,7 @@ fn require_that_try_borrow_mut_from_original_ref_cell_fails_when_called_within_t
 #[test]
 fn require_that_try_borrow_mut_from_original_ref_cell_fails_when_called_within_try_call_rust_with_handle() {
     let rc = Rc::new(RefCell::new(38));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     instance.try_call_rust_with_handle(|_| {
         let nested_borrow_result = rc.try_borrow_mut();
         assert!(nested_borrow_result.is_err());
@@ -183,7 +208,7 @@ fn require_that_try_borrow_mut_from_original_ref_cell_fails_when_called_within_t
 fn require_that_try_call_rust_with_handle_succeeds_when_called_within_scope_of_borrow_of_original_ref_cell() {
     let rc = Rc::new(RefCell::new(40));
     let ref_ = rc.borrow();
-    let instance: RustObjAccess<i32> = RustObjAccess::new_strong(rc.clone());
+    let instance: RustObjAccess<i32> = RustObjAccess::new(rc.clone());
     instance.try_call_rust_with_handle(|value| {
         assert_eq!(*value, 40);
     }).unwrap();
@@ -194,7 +219,7 @@ fn require_that_try_call_rust_with_handle_succeeds_when_called_within_scope_of_b
 fn require_that_try_call_rust_with_handle_fails_when_called_within_scope_of_borrow_mut_of_original_ref_cell() {
     let rc = Rc::new(RefCell::new(41));
     let mut ref_mut = rc.borrow_mut();
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let result = instance.try_call_rust_with_handle(|_| { panic!("Not supposed to be called") });
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), RustObjAccessError::BorrowError(_)));
@@ -205,7 +230,7 @@ fn require_that_try_call_rust_with_handle_fails_when_called_within_scope_of_borr
 fn require_that_try_call_rust_with_handle_mut_fails_when_called_within_scope_of_borrow_of_original_ref_cell() {
     let rc = Rc::new(RefCell::new(42));
     let ref_ = rc.borrow();
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let result = instance.try_call_rust_with_handle_mut(|_| { panic!("Not supposed to be called") });
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), RustObjAccessError::BorrowMutError(_)));
@@ -216,65 +241,11 @@ fn require_that_try_call_rust_with_handle_mut_fails_when_called_within_scope_of_
 fn require_that_try_call_rust_with_handle_mut_fails_when_called_within_scope_of_borrow_mut_of_original_ref_cell() {
     let rc = Rc::new(RefCell::new(42));
     let mut ref_mut = rc.borrow_mut();
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let result = instance.try_call_rust_with_handle_mut(|_| { panic!("Not supposed to be called") });
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), RustObjAccessError::BorrowMutError(_)));
     ref_mut.add_assign(1);
-}
-
-// ---------------------------------------------------------------------------
-// Weak pointer behavior
-// ---------------------------------------------------------------------------
-
-#[test]
-fn require_that_try_call_rust_with_handle_holds_original_rc_when_class_is_constructed_with_weak_pointer_and_pointer_is_not_expired_at_the_moment_of_call() {
-    let rc = Rc::new(RefCell::new(43));
-    let weak = Rc::downgrade(&rc);
-    let mut rc = Some(rc);
-    let instance = RustObjAccess::new_weak(weak.clone());
-    instance.try_call_rust_with_handle(|_value| {
-        rc.take();
-        assert_eq!(weak.strong_count(), 1);
-    }).unwrap();
-}
-
-#[test]
-fn require_that_try_call_rust_with_handle_fails_when_class_is_constructed_with_weak_pointer_and_pointer_is_expired_before_call() {
-    let rc = Rc::new(RefCell::new(43));
-    let weak = Rc::downgrade(&rc);
-    let mut rc = Some(rc);
-    let instance = RustObjAccess::new_weak(weak.clone());
-    rc.take();
-    let result = instance.try_call_rust_with_handle(|_value| {
-        panic!("Not supposed to be executed")
-    });
-    assert!(matches!(result.unwrap_err(), RustObjAccessError::ExpiredWeakPtr));
-}
-
-#[test]
-fn require_that_try_call_rust_with_handle_mut_holds_original_rc_when_class_is_constructed_with_weak_pointer_and_pointer_is_not_expired_at_the_moment_of_call() {
-    let rc = Rc::new(RefCell::new(43));
-    let weak = Rc::downgrade(&rc);
-    let mut rc = Some(rc);
-    let instance = RustObjAccess::new_weak(weak.clone());
-    instance.try_call_rust_with_handle_mut(|_value| {
-        rc.take();
-        assert_eq!(weak.strong_count(), 1);
-    }).unwrap();
-}
-
-#[test]
-fn require_that_try_call_rust_with_handle_mut_fails_when_class_is_constructed_with_weak_pointer_and_pointer_is_expired_before_call() {
-    let rc = Rc::new(RefCell::new(43));
-    let weak = Rc::downgrade(&rc);
-    let mut rc = Some(rc);
-    let instance = RustObjAccess::new_weak(weak.clone());
-    rc.take();
-    let result = instance.try_call_rust_with_handle_mut(|_value| {
-        panic!("Not supposed to be executed")
-    });
-    assert!(matches!(result.unwrap_err(), RustObjAccessError::ExpiredWeakPtr));
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +260,7 @@ fn require_that_try_call_rust_with_handle_mut_fails_when_class_is_constructed_wi
 #[test]
 fn require_that_try_store_handle_and_call_cpp_succeeds_when_called_with_immutable_reference() {
     let rc = Rc::new(RefCell::new(44));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let b = rc.borrow();
     let result = instance.try_store_handle_and_call_cpp(&*b, || *b + 6);
     assert!(result.is_ok());
@@ -299,7 +270,7 @@ fn require_that_try_store_handle_and_call_cpp_succeeds_when_called_with_immutabl
 #[test]
 fn require_that_try_store_handle_and_call_cpp_mut_succeeds_when_called_with_mutable_reference() {
     let rc = Rc::new(RefCell::new(45));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     {
         let mut b = rc.borrow_mut();
         let result = instance.try_store_handle_and_call_cpp_mut(&mut *b, || {
@@ -314,7 +285,7 @@ fn require_that_try_store_handle_and_call_cpp_mut_succeeds_when_called_with_muta
 #[test]
 fn require_that_try_call_rust_with_handle_succeeds_when_called_after_try_store_handle_and_call_cpp() {
     let rc = Rc::new(RefCell::new(46));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let b = rc.borrow();
     let result = instance.try_store_handle_and_call_cpp(&*b, || {
         instance.try_call_rust_with_handle(|value| value + 8)
@@ -329,7 +300,7 @@ fn require_that_try_call_rust_with_handle_succeeds_when_called_after_try_store_h
 #[test]
 fn require_that_try_call_rust_with_handle_mut_succeeds_when_called_after_try_store_handle_and_call_cpp_mut() {
     let rc = Rc::new(RefCell::new(47));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     {
         let mut b = rc.borrow_mut();
         let result = instance.try_store_handle_and_call_cpp_mut(&mut b, || {
@@ -348,7 +319,7 @@ fn require_that_try_call_rust_with_handle_mut_succeeds_when_called_after_try_sto
 #[test]
 fn require_that_try_store_handle_and_call_cpp_succeeds_when_called_while_already_stored() {
     let rc = Rc::new(RefCell::new(48));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let b = rc.borrow();
     let mark_hit = std::cell::Cell::new(false);
     let result = instance.try_store_handle_and_call_cpp(&*b, || {
@@ -365,7 +336,7 @@ fn require_that_try_store_handle_and_call_cpp_succeeds_when_called_while_already
 #[cfg(not(miri))]
 fn require_that_try_store_handle_and_call_cpp_mut_fails_when_called_while_already_stored() {
     let rc = Rc::new(RefCell::new(48));
-    let instance = RustObjAccess::new_strong(rc.clone());
+    let instance = RustObjAccess::new(rc.clone());
     let instance_ptr = &instance as *const _ as *mut RustObjAccess<i32>;
     let mut b = rc.borrow_mut();
     let b_ptr = &mut *b as *mut i32;

@@ -6,7 +6,8 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use qtbridge_type_lib::{QObject, QObjectMutPtr, QVariant};
-use crate::qproxies::{QRustProxy, ConstructionMode};
+use crate::qproxies::{PlacementAddress, QRustProxy};
+use crate::registry::Owner;
 use crate::rustobjectgetter::get_rust_proxy;
 use crate::{DispatchMetaCall, QMetaInfo, QmlMethodInvoker};
 
@@ -91,8 +92,7 @@ pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
         }
 
         let proxy = unsafe { &*(proxy_ptr as *const Self::ProxyRust) };
-        let rc_adapter = proxy.get_rust_object_rc()
-            .expect("Rust object associated with given QObject was already dropped");
+        let rc_adapter = proxy.get_rust_object_rc();
 
         // Rust interest exists again: take ownership back if it was handed
         // to the engine.
@@ -145,30 +145,25 @@ pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
     #[doc(hidden)]
     fn as_adaptor_trait(rust_obj_rc: Rc<RefCell<Self>>) -> Rc<RefCell<<Self::ProxyRust as QRustProxy>::AdapterType>>;
 
-    /// Register the given Rust object instance in the multiton.
-    /// Create Rust and C++ proxies and links them to the Rust object.
-    /// If `construction` is `AtAddress`, the C++ proxy is created using
-    /// placement new operator at respective address
+    /// Creates the proxy pair for the given Rust object instance, links
+    /// them together and registers the object in `crate::registry`.
+    /// The C++ proxy is created with placement new at `at_address` if
+    /// given (QML-created elements), on the heap otherwise.
     #[doc(hidden)]
-    fn register_instance_in_map(rust_obj_rc: Rc<RefCell<Self>>, construction: ConstructionMode) {
+    fn register_instance_in_map(
+        rust_obj_rc: Rc<RefCell<Self>>, owner: Owner, at_address: Option<PlacementAddress>,
+    ) {
         let key = (*rust_obj_rc).as_ptr() as *const u8;
-        // Rust-created objects are owned by `crate::registry`,
-        // which holds a strong reference and deletion is
-        // centralized in `crate::registry::collect_garbage`.
-        // QML-created objects are owned by the engine,
-        // the proxy holds a strong reference and deletion is
-        // triggered by the QML-engine.
         let keep: Rc<RefCell<Self>> = rust_obj_rc.clone();
         let dyn_rc = Self::as_adaptor_trait(rust_obj_rc);
         let dynamic_meta = <Self as QMetaInfo>::get_shared_dynamic_meta_object_data();
-        let proxy = Self::ProxyRust::new(&dyn_rc, dynamic_meta, &construction, Box::new(move || {
+        let proxy = Self::ProxyRust::new(&dyn_rc, dynamic_meta, at_address, Box::new(move || {
             crate::registry::unregister(key);
         }));
         // SAFETY: We constructed proxy just above.
         let qobject = unsafe { &*proxy }.get_cpp_proxy() as *mut QObject;
-        let shared_owner = matches!(construction, ConstructionMode::Weak)
-            .then_some(keep as std::rc::Rc<dyn std::any::Any>);
-        crate::registry::register(key, proxy as *const u8, qobject, shared_owner);
+        crate::registry::register(key, proxy as *const u8, qobject,
+            Rc::<RefCell<Self>>::downgrade(&keep), owner);
     }
 
     /// Creates a default-initialized instance and attaches its [`QObject`]
@@ -186,10 +181,7 @@ pub trait QObjectHolder : DispatchMetaCall + QMetaInfo + Default + 'static {
     /// Attaches a dedicated [`QObject`] to an existing `instance`,
     /// enabling its use in QML.
     fn attach_qobject(instance: &std::rc::Rc<std::cell::RefCell<Self>>) {
-        Self::register_instance_in_map(
-            instance.clone(),
-            ConstructionMode::Weak
-        );
+        Self::register_instance_in_map(instance.clone(), Owner::RustRegistry, None);
     }
 
     /// Detaches and deletes the dedicated [`QObject`] of this instance.

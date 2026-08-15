@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use qtbridge_type_lib::{QMetaTypeInterface, QMetaTypeFlag, QMetaObject, QObject};
 use crate::qproxies::QCppProxy;
 use crate::{QObjectHolder, QMetaInfo};
-use crate::qproxies::ConstructionMode;
+use crate::registry::Owner;
 
 fn monomorphize_meta_object_fn<T: QObjectHolder>() -> extern "C" fn(*const QMetaTypeInterface) -> *mut QMetaObject {
     extern "C" fn meta_object_fn<T: QObjectHolder>(_iface: *const QMetaTypeInterface) -> *mut QMetaObject {
@@ -23,7 +23,7 @@ fn monomorphize_default_ctor<T: QObjectHolder>() -> extern "C" fn(*const QMetaTy
     extern "C" fn default_ctor<T: QObjectHolder>(_iface: *const QMetaTypeInterface, addr: *mut u8) {
         let instance =
         Rc::new(RefCell::new(<T as Default>::default()));
-        <T as QObjectHolder>::register_instance_in_map(instance, ConstructionMode::AtAddress(addr));
+        <T as QObjectHolder>::register_instance_in_map(instance, Owner::Engine, Some(addr));
     }
     default_ctor::<T>
 }

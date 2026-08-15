@@ -46,6 +46,11 @@ path = "tests/cpp_ownership_tests.rs"
 harness = false
 
 [[test]]
+name = "engine_owned_tests"
+path = "tests/engine_owned_tests.rs"
+harness = false
+
+[[test]]
 name = "unattached_qaim_tests"
 path = "tests/unattached_qaim_tests.rs"
 harness = false

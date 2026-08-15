@@ -67,67 +67,32 @@
 //! Every instance of a user-defined Rust struct annotated with `#[qobject]`
 //! has two auxiliary parts invisible to the user:
 //!
-//! - **`CppProxy`** - a C++ class derived from`QObject` or `QAbstractItemModel` (or another base
+//! - **`CppProxy`** - a C++ class derived from `QObject` or `QAbstractItemModel` (or another base
 //!   interface). This is the object the QML engine sees and interacts with. It is allocated with
 //!   a regular `new` for Rust-created objects, or with placement `new` at a QML-engine-supplied
 //!   address for QML-created elements.
 //! - **[`RustProxy`](crate::genericrustproxy::GenericRustProxy)** - the Rust-side bridge,
 //!   heap-allocated via [`Box::into_raw`] in
 //!   [`QRustProxy::new`](qtbridge_runtime::qproxies::QRustProxy::new). It holds a pointer to
-//!   `CppProxy` and a reference the user struct as `Rc<RefCell<UserStruct>>` or
-//!   `Weak<RefCell<UserStruct>>` in [`RustObjAccess`].
+//!   `CppProxy` and, in [`RustObjAccess`], the strong `Rc<RefCell<UserStruct>>` that keeps the
+//!   user struct alive.
 //!
-//! The `CppProxy` C++ destructor is the common teardown point for the proxy pair: it always
-//! calls `GenericRustProxy::drop_self`, which fires the `on_drop` callback and then drops
-//! `RustProxy` along with its `Rc`/`Weak` reference to the user struct.
-//!
-//! ### Who destroys `CppProxy`?
-//!
-//! That depends on who owns the object, determined at construction by `ConstructionMode`.
-//!
-//! #### QML-created objects
-//!
-//! `RustProxy` holds a strong `Rc<RefCell<UserStruct>>` (`SharedReferenceWithQml::OwnedByQml`);
-//! the engine (or a parent) owns the `QObject`.
+//! A user struct therefore lives exactly as long as its `QObject`, plus any user handles,
+//! which are plain `Rc<RefCell<UserStruct>>`s. There is one teardown chain, no matter who
+//! initiates the deletion:
 //!
 //! ```text
-//! JS GC deletes QObject
+//! QObject dies (the engine, a parent, or registry::collect_garbage())
 //!   → virtual ~CppProxy()
-//!   → GenericRustProxy::drop_self
-//!     → on_drop() fires
-//!     → Rc<RefCell<UserStruct>> strong count −1
-//!       → UserStruct::drop()                     (only if this was the last strong Rc)
+//!     → GenericRustProxy::drop_self
+//!       → on_drop() (removes the registry entry)
+//!       → RustProxy drops its Rc
+//!         → UserStruct::drop()          (only if this was the last strong Rc)
 //! ```
 //!
-//! #### Rust-created objects
-//!
-//! `RustProxy` holds only a `Weak<RefCell<UserStruct>>`
-//! (`SharedReferenceWithQml::OwnedByRust`); the owner of record is the per-thread
-//! registry (`qtbridge_runtime::registry`), which holds one strong `Rc` for each
-//! object. `QObject`s are explicitly set `CppOwnership` and only set to `JavaScriptOwnership`
-//! when there is no interest from Rust in the object. The QML engine's garbage collector then
-//! reclaims their JS wrappers which in turn is the sign for the registry to delete the `Rc`
-//! that keeps the user struct alive.
-//!
-//! ```text
-//! registry::collect_garbage() runs & object has no user Rc
-//!
-//! -- never wrapped by any engine: deleted immediately
-//!   → QObject::delete
-//!     → virtual ~CppProxy()
-//!       → GenericRustProxy::drop_self
-//!         → on_drop() (removes the registry entry)
-//!   → registry drops its Rc
-//!     → UserStruct::drop()
-//!
-//! -- live JS wrapper: ownership handed to the engine --
-//!   → setJavaScriptOwnership (entry and Rc stay in the registry)
-//!   if a later engine gc() finds the wrapper unreachable
-//!     → engine deletes the QObject
-//!       → same teardown chain as above; removing the registry entry
-//!         drops its Rc
-//!           → UserStruct::drop()
-//! ```
+//! Who may initiate the deletion is the registry's policy: the per-entry owner state,
+//! the `CppOwnership` pin for Rust-created objects, and the collection rules live in
+//! `qtbridge_runtime::registry`.
 
 pub mod genericrustproxy;
 pub use qtbridge_runtime::live_proxy_count;
