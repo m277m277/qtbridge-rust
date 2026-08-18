@@ -3,7 +3,7 @@
 
 use qtbridge::QApp;
 use qtbridge::include_bytes_qml;
-use qtbridge::qtbridge_type_lib::{QString, QVariant};
+use qtbridge::qtbridge_type_lib::QString;
 
 mod basic_login;
 mod paginated_source;
@@ -65,7 +65,7 @@ fn main() {
         .register::<RestService>()
         .register::<PaginatedResource>()
         .register::<BasicLogin>()
-        .add_initial_property("serverUrl", &QVariant::from(&QString::from(url)))
+        .set_initial_property("serverUrl", &QString::from(url))
         .add_import_path("qrc:/qt/qml")
         .load_qml_from_file("qrc:/qt/qml/color_palette/Main.qml")
         .run();

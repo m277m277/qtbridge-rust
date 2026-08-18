@@ -50,7 +50,6 @@ fn qml_list_of_cat_accepts_cats() {
     Dog::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -65,7 +64,7 @@ fn qml_list_of_cat_accepts_cats() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
+        .set_initial_object("reporter", reporter.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 2, "list<Cat> should hold the two Cats");

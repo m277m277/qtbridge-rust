@@ -66,12 +66,11 @@ impl Backend {
 
 
 fn qml_reference_keeps_object_alive_after_last_rc_drop() {
-    let obj = TestObject::default_with_attached_qobject();
+    let obj = Rc::new(RefCell::new(TestObject::default()));
     let weak = Rc::downgrade(&obj);
-    let obj_var = obj.borrow().as_qvariant();
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("testObject", &obj_var)
+    qapp.set_initial_object("testObject", obj.clone())
         .load_qml(br#"
         import QtQuick
         import tst_ownership
@@ -92,11 +91,10 @@ fn qml_reference_keeps_object_alive_after_last_rc_drop() {
 /// with `CppOwnership` for life, a `gc()` with no QML references leaves the
 /// object fully usable and QML simply re-wraps it on the next access.
 fn object_survives_gc_while_rust_holds_a_handle() {
-    let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &backend_var)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         Item {
@@ -120,11 +118,10 @@ fn object_survives_gc_while_rust_holds_a_handle() {
 /// Once Rust holds no handle, `collect_garbage()` hands the object to the
 /// engine and the next collection of its wrapper reclaims it.
 fn released_object_is_reclaimed_by_handover_plus_gc() {
-    let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &backend_var)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         Item {

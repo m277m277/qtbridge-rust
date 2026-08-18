@@ -100,10 +100,9 @@ impl Factory {
 }
 
 fn run_qml(qml: &str) -> Rc<RefCell<Factory>> {
-    let factory = Factory::default_with_attached_qobject();
-    let factory_var = factory.borrow().as_qvariant();
+    let factory = Rc::new(RefCell::new(Factory::default()));
     let mut qapp = QApp::new();
-    qapp.add_initial_property("factory", &factory_var)
+    qapp.set_initial_object("factory", factory.clone())
         .load_qml(qml.as_bytes());
     factory
 }

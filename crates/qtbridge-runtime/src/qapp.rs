@@ -1,9 +1,14 @@
 // Copyright (C) 2025 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use cxx::UniquePtr;
+use cxx_qt_lib::QObjectMutPtr;
 use qtbridge_type_lib::{QGuiApplication, QQmlApplicationEngine, QString, QVariant, QVariantMap};
 use crate::qmlelement::QmlElement;
+use crate::qobjectholder::QObjectHolder;
 
 /// Entry point for a QML application.
 ///
@@ -32,10 +37,11 @@ use crate::qmlelement::QmlElement;
 ///     .run();
 /// ```
 pub struct QApp {
-    engine: UniquePtr<QQmlApplicationEngine>, // engine must be first field so its dropped before app
+    engine: UniquePtr<QQmlApplicationEngine>,
     #[allow(dead_code)]
     app: UniquePtr<QGuiApplication>,
-    initial_properties: QVariantMap,
+    // create QVariant at load time to avoid storing raw QObject pointers.
+    initial_properties: Vec<(QString, Box<dyn FnOnce() -> QVariant>)>,
 }
 
 impl Drop for QApp {
@@ -62,7 +68,7 @@ impl QApp {
         Self {
             engine: engine,
             app: app,
-            initial_properties: QVariantMap::default(),
+            initial_properties: Vec::new(),
         }
     }
 
@@ -87,7 +93,7 @@ impl QApp {
     /// let prop = 42;
     ///
     /// QApp::new()
-    /// .add_initial_property("answer", &(&prop).into())
+    /// .set_initial_property("answer", &prop)
     /// .load_qml(br#"
     ///     import QtQuick
     ///     import QtQuick.Controls
@@ -102,31 +108,42 @@ impl QApp {
     ///     }"#)
     /// .run();
     /// ```
-    pub fn add_initial_property(&mut self, id: &str, value: &QVariant) -> &mut Self {
-        self.initial_properties.insert(QString::from(id), value.clone());
+    pub fn set_initial_property(&mut self, id: &str, value: impl Into<QVariant>) -> &mut Self {
+        let variant = value.into();
+        self.initial_properties.push((QString::from(id), Box::new( move || {
+            variant
+        })));
         self
     }
 
-    /// Sets multiple initial properties on the root QML object at once.
+    /// Sets a `#[qobject]` instance as initial property on the root QML
+    /// object, attaching a `QObject` to it first if none exists.
     ///
     /// Must be called before [`load_qml`](QApp::load_qml) or
     /// [`load_qml_from_file`](QApp::load_qml_from_file).
+    /// Call multiple times to set several objects.
     ///
     /// # Example
     ///
     /// ```rust
-    ///# use qtbridge_runtime::QApp;
-    /// let prop = 42;
+    ///# use std::cell::RefCell;
+    ///# use std::rc::Rc;
+    ///# use qtbridge::{QApp, qobject};
+    /// #[derive(Default)]
+    /// pub struct Backend {
+    /// }
+    /// #[qobject]
+    /// impl Backend {
+    /// }
+    ///
+    /// let backend = Rc::new(RefCell::new(Backend::default()));
     ///
     /// QApp::new()
-    ///     .with_initial_properties(&[
-    ///         ("answer", (&prop).into()),
-    ///     ])
+    ///     .set_initial_object("backend", backend)
     ///     .load_qml(br#"
     ///         import QtQuick
-    ///         import QtQuick.Controls
-    ///         ApplicationWindow {
-    ///             required property var answer
+    ///         Item {
+    ///             required property var backend
     ///#            Component.onCompleted: closeTimer.start()
     ///#            Timer {
     ///#                id: closeTimer
@@ -136,21 +153,28 @@ impl QApp {
     ///         }"#)
     ///     .run();
     /// ```
-    pub fn with_initial_properties(&mut self, properties: &[(&str, QVariant)]) -> &mut Self {
-        let map = properties.iter()
-            .map(|(k, v)| (QString::from(*k), v))
-            .collect();
-        self.engine.pin_mut().set_initial_properties(&map);
+    pub fn set_initial_object<T: QObjectHolder>(
+        &mut self, id: &str, object: Rc<RefCell<T>>,
+    ) -> &mut Self {
+        self.initial_properties.push((QString::from(id), Box::new( move || {
+            let ptr = T::rc_ref_cell_to_qobject(&object).cast_mut();
+            let ptr_wrap = unsafe { QObjectMutPtr::from_raw(ptr.cast()) };
+            (&ptr_wrap).into()
+        })));
         self
     }
 
     /// Loads QML source from an in-memory byte slice.
     ///
-    /// Applies any properties queued with [`add_initial_property`](QApp::add_initial_property)
+    /// Applies any properties queued with [`set_initial_property`](QApp::set_initial_property)
     /// before loading.
     pub fn load_qml(&mut self, code: &[u8]) -> &mut Self {
         if !self.initial_properties.is_empty() {
-            self.engine.pin_mut().set_initial_properties(&self.initial_properties);
+           let mut initial_properties_resolved = QVariantMap::default();
+            for (id, resolve) in std::mem::take(&mut self.initial_properties) {
+                initial_properties_resolved.insert(id, resolve());
+            }
+            self.engine.pin_mut().set_initial_properties(&initial_properties_resolved);
         }
         self.engine.pin_mut().load_data(&code.into(), &Default::default());
         self
@@ -167,7 +191,11 @@ impl QApp {
     /// [`add_import_path`](QApp::add_import_path) before this call.
     pub fn load_qml_from_file(&mut self, url: &str) -> &mut Self {
         if !self.initial_properties.is_empty() {
-            self.engine.pin_mut().set_initial_properties(&self.initial_properties);
+           let mut initial_properties_resolved = QVariantMap::default();
+            for (id, resolve) in std::mem::take(&mut self.initial_properties) {
+                initial_properties_resolved.insert(id, resolve());
+            }
+            self.engine.pin_mut().set_initial_properties(&initial_properties_resolved);
         }
         self.engine.pin_mut().load(&url.into());
         self

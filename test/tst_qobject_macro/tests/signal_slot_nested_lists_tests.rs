@@ -70,7 +70,6 @@ fn signal_vec_of_nested_types_round_trips_through_qt_metacall() {
     Cat::register();
 
     let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -87,7 +86,7 @@ fn signal_vec_of_nested_types_round_trips_through_qt_metacall() {
     "#;
 
     QApp::new()
-        .add_initial_property("backend", &backend_var)
+        .set_initial_object("backend", backend.clone())
         .load_qml(qml.as_bytes());
 
     let received = &backend.borrow().received_legs;
@@ -103,8 +102,6 @@ fn signal_vec_of_nested_types_can_be_received_in_qml() {
 
     let backend = Backend::default_with_attached_qobject();
     let reporter = Reporter::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -130,8 +127,8 @@ fn signal_vec_of_nested_types_can_be_received_in_qml() {
     "#;
 
     QApp::new()
-        .add_initial_property("backend", &backend_var)
-        .add_initial_property("reporter", &reporter_var)
+        .set_initial_object("backend", backend.clone())
+        .set_initial_object("reporter", reporter.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 7, "QML should sum 4 + 3 = 7 legs from emitted cats");
@@ -142,7 +139,6 @@ fn slot_with_vec_of_nested_types_can_be_called_from_qml() {
     Cat::register();
 
     let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -163,7 +159,7 @@ fn slot_with_vec_of_nested_types_can_be_called_from_qml() {
     "#;
 
     QApp::new()
-        .add_initial_property("backend", &backend_var)
+        .set_initial_object("backend", backend.clone())
         .load_qml(qml.as_bytes());
 
     let received = &backend.borrow().received_legs;

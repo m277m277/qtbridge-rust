@@ -45,12 +45,9 @@ fn slot_with_nested_type_can_be_called_from_qml_when_nested_type_is_self() {
     let source = Value::default_with_attached_qobject();
     source.borrow_mut().internal = 42;
 
-    let target_var = target.borrow().as_qvariant();
-    let source_var = source.borrow().as_qvariant();
-
      QApp::new()
-        .add_initial_property("target", &target_var)
-        .add_initial_property("source", &source_var)
+        .set_initial_object("target", target.clone())
+        .set_initial_object("source", source.clone())
         .load_qml(qml.as_bytes());
 
     // The slot should have set target.internal = source.internal = 42.
@@ -99,10 +96,9 @@ fn slot_with_nested_type_can_be_called_from_qml_when_nested_type_is_not_self() {
     Value::register();
 
     let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("backend", &backend_var)
+        .set_initial_object("backend", backend.clone())
         .load_qml(qml.as_bytes());
     assert_eq!(backend.borrow().value_internal, 42);
 

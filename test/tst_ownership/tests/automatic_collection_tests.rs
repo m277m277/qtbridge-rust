@@ -52,7 +52,6 @@ impl Backend {
 
 fn sentinel_reclaims_garbage_without_manual_collect_garbage() {
     let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
 
     let baseline_objects = live_object_count();
     let baseline_proxies = live_proxy_count();
@@ -62,7 +61,7 @@ fn sentinel_reclaims_garbage_without_manual_collect_garbage() {
     // gc() then frees the wrappers and with them the objects. Recording
     // happens one tick later, after the deferred deletions ran.
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &backend_var)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(format!(r#"
         import QtQuick
         Item {{

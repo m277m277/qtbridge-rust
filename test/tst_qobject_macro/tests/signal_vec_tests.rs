@@ -115,8 +115,7 @@ fn test_type<T>(emit_fn: fn(&mut TestObject), check_fn: fn(&TestObject) -> bool)
     let obj = TestObject::default_with_attached_qobject();
 
     let mut app = QApp::new();
-    let obj_var = obj.borrow().as_qvariant();
-    app.add_initial_property("testObject", &obj_var)
+    app.set_initial_object("testObject", obj.clone())
        .load_qml(qml.as_bytes());
 
     // Emit the signal.

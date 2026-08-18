@@ -10,7 +10,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use qtbridge::{QApp, QmlObject, QmlElement, qobject};
+use qtbridge::{QApp, QmlElement, qobject};
 
 #[derive(Default)]
 pub struct Child {}
@@ -58,11 +58,10 @@ impl Backend {
 /// objects `JavaScriptOwnership`.)
 fn engine_created_object_is_never_collected() {
     Child::register();
-    let backend = Backend::default_with_attached_qobject();
-    let property = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &property)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         import tst_ownership
@@ -86,11 +85,10 @@ fn engine_created_object_is_never_collected() {
 /// which is the last one.
 fn engine_deletion_frees_the_value() {
     Child::register();
-    let backend = Backend::default_with_attached_qobject();
-    let property = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &property)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         import tst_ownership

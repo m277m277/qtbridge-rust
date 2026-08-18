@@ -46,10 +46,9 @@ fn slot_receives_js_array_as_value() {
 
 fn slot_receives_js_array_as_vec() {
     let obj = JsonBackend::default_with_attached_qobject();
-    let var = obj.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("backend", &var)
+        .set_initial_object("backend", obj.clone())
         .load_qml(
             r#"import QtQuick
                Item {
@@ -83,10 +82,9 @@ fn property_value_written_from_qml() {
 
 fn property_array_written_from_qml() {
     let obj = JsonBackend::default_with_attached_qobject();
-    let var = obj.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("backend", &var)
+        .set_initial_object("backend", obj.clone())
         .load_qml(
             r#"import QtQuick
                Item {
@@ -105,9 +103,8 @@ fn property_array_written_from_qml() {
 
 fn check_json_value_property(qml_value: &str, expected: serde_json::Value) {
     let obj = JsonBackend::default_with_attached_qobject();
-    let var = obj.borrow().as_qvariant();
     QApp::new()
-        .add_initial_property("backend", &var)
+        .set_initial_object("backend", obj.clone())
         .load_qml(
             format!(
                 r#"import QtQuick
@@ -123,9 +120,8 @@ fn check_json_value_property(qml_value: &str, expected: serde_json::Value) {
 
 fn check_receive_value(qml_value: &str, expected: serde_json::Value) {
     let obj = JsonBackend::default_with_attached_qobject();
-    let var = obj.borrow().as_qvariant();
     QApp::new()
-        .add_initial_property("backend", &var)
+        .set_initial_object("backend", obj.clone())
         .load_qml(
             format!(
                 r#"import QtQuick

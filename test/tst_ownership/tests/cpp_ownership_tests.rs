@@ -52,11 +52,10 @@ impl Backend {
 }
 
 fn slot_returned_object_survives_gc_while_rust_holds_it() {
-    let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &backend_var)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         Item {
@@ -86,11 +85,10 @@ fn slot_returned_object_survives_gc_while_rust_holds_it() {
 /// A handed-over object that re-enters Rust must be pinned back to
 /// `CppOwnership`: the wrapper's collection must no longer delete it.
 fn handed_over_object_reacquired_by_rust_is_repinned() {
-    let backend = Backend::default_with_attached_qobject();
-    let backend_var = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &backend_var)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         Item {

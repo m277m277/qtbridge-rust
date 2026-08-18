@@ -23,13 +23,9 @@ fn main() {
     let b = <Backend<QString> as QObjectHolder>::get_qobject_ptr_qmetatype();
     assert_ne!(a, b, "QMetaTypes are not unique");
 
-    let initial_properties = [
-        ("rustmodel", backend.borrow().as_qvariant()),
-        ("rustmodel2", backend2.borrow().as_qvariant()),
-    ];
-
     QApp::new()
-        .with_initial_properties(&initial_properties)
+        .set_initial_object("rustmodel", backend)
+        .set_initial_object("rustmodel2", backend2)
         .load_qml(include_bytes!("main.qml"))
         .run();
 }

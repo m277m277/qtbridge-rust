@@ -54,11 +54,9 @@ pub use reporter::Reporter;
 fn qml_reads_rust_owned_list_property() {
     Cat::register();
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let container = Container::default_with_attached_qobject();
     container.borrow_mut().kittens.push(Cat::default_with_attached_qobject());
-    let container_var = container.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -80,8 +78,8 @@ fn qml_reads_rust_owned_list_property() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
-        .add_initial_property("container", &container_var)
+        .set_initial_object("reporter", reporter.clone())
+        .set_initial_object("container", container.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 7, "container.kittens should have 7 legs in total");
@@ -93,10 +91,8 @@ fn qml_reads_rust_owned_list_property() {
 fn list_property_member_notify_signal_fires_when_qml_appends() {
     Cat::register();
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let container = Container::default_with_attached_qobject();
-    let container_var = container.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -116,8 +112,8 @@ fn list_property_member_notify_signal_fires_when_qml_appends() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
-        .add_initial_property("container", &container_var)
+        .set_initial_object("reporter", reporter.clone())
+        .set_initial_object("container", container.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 2, "kittenCount binding should update to 2 after QML appends");

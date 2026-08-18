@@ -58,10 +58,9 @@ pub mod linkme_singleton {
 
 fn auto_registered_element_is_instantiable() {
     let probe = Probe::default_with_attached_qobject();
-    let var = probe.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("probe", &var)
+        .set_initial_object("probe", probe.clone())
         .load_qml(
             r#"import QtQuick
                import tst_linkme
@@ -78,10 +77,9 @@ fn auto_registered_element_is_instantiable() {
 
 fn auto_registered_singleton_is_accessible() {
     let probe = Probe::default_with_attached_qobject();
-    let var = probe.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("probe", &var)
+        .set_initial_object("probe", probe.clone())
         .load_qml(
             r#"import QtQuick
                import tst_linkme

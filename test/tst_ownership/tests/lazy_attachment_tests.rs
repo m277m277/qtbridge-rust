@@ -97,10 +97,9 @@ fn emit_before_exposure_is_a_noop() {
 /// attaches a fresh QObject and the registry takes over.
 fn object_heals_after_its_qobject_was_deleted() {
     Child::register();
-    let backend = Backend::default_with_attached_qobject();
-    let property = backend.borrow().as_qvariant();
+    let backend = Rc::new(RefCell::new(Backend::default()));
     let mut qapp = QApp::new();
-    qapp.add_initial_property("backend", &property )
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         Item {
@@ -139,11 +138,10 @@ fn object_heals_after_its_qobject_was_deleted() {
 /// next property read attaches a fresh QObject instead of aborting.
 fn destroyed_qml_component_is_healed_on_next_exposure() {
     Child::register();
-    let backend = Backend::default_with_attached_qobject();
+    let backend = Rc::new(RefCell::new(Backend::default()));
 
     let mut qapp = QApp::new();
-    let property = backend.borrow().as_qvariant();
-    qapp.add_initial_property("backend", &property)
+    qapp.set_initial_object("backend", backend.clone())
         .load_qml(br#"
         import QtQuick
         import tst_ownership

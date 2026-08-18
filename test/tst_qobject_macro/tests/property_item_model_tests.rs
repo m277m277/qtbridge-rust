@@ -107,10 +107,9 @@ fn item_model_can_be_assigned_to_property() {
     "#;
 
     let dual_model = DualModel::default_with_attached_qobject();
-    let dual_model_var = dual_model.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("dualModel", &dual_model_var)
+        .set_initial_object("dualModel", dual_model.clone())
         .register::<DualModel>()
         .register::<Model>()
         .load_qml(qml.as_bytes());
@@ -138,10 +137,8 @@ use test_values::TestValues;
 
 fn item_model_can_be_read_from_property() {
     let dual_model = DualModel::default_with_attached_qobject();
-    let dual_model_var = dual_model.borrow().as_qvariant();
 
     let test_values = TestValues::default_with_attached_qobject();
-    let test_values_var = test_values.borrow().as_qvariant();
 
 
     let qml = r#"
@@ -167,8 +164,8 @@ fn item_model_can_be_read_from_property() {
     "#;
 
     let mut app = QApp::new();
-    app.add_initial_property("dualModel", &dual_model_var)
-        .add_initial_property("testValues", &test_values_var)
+    app.set_initial_object("dualModel", dual_model.clone())
+        .set_initial_object("testValues", test_values.clone())
         .register::<DualModel>()
         .register::<TestValues>()
         .load_qml(qml.as_bytes());
@@ -209,14 +206,12 @@ fn item_model_is_compatible_with_view() {
 
     let model = Model::default_with_attached_qobject();
     model.borrow_mut().populate_items(6);
-    let model_var = model.borrow().as_qvariant();
 
     let test_values = TestValues::default_with_attached_qobject();
-    let test_values_var = test_values.borrow().as_qvariant();
 
     QApp::new()
-        .add_initial_property("model", &model_var)
-        .add_initial_property("testValues", &test_values_var)
+        .set_initial_object("model", model.clone())
+        .set_initial_object("testValues", test_values.clone())
         .register::<Model>()
         .register::<TestValues>()
         .load_qml(qml.as_bytes());

@@ -70,7 +70,6 @@ fn single_object_default_property_receives_child() {
     SingleHolder::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -88,7 +87,7 @@ fn single_object_default_property_receives_child() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
+        .set_initial_object("reporter", reporter.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 5);
@@ -99,7 +98,6 @@ fn list_default_property_receives_children() {
     ListHolder::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -122,7 +120,7 @@ fn list_default_property_receives_children() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
+        .set_initial_object("reporter", reporter.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 7);
@@ -134,7 +132,6 @@ fn wrong_type_is_rejected_by_qml() {
     SingleHolder::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     // Assigning a `Dog` to `kitten` (declared type `Cat*`) must be refused by
     // QML with a type error - not accepted and then panicked on in Rust. The
@@ -156,7 +153,7 @@ fn wrong_type_is_rejected_by_qml() {
 
     quicktest::install_message_capture();
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
+        .set_initial_object("reporter", reporter.clone())
         .load_qml(qml.as_bytes());
     let messages = quicktest::take_captured_messages();
 

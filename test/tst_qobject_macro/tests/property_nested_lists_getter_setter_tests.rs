@@ -50,7 +50,6 @@ fn qml_reads_list_property_through_getter() {
     Cat::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let cat1 = Cat::default_with_attached_qobject();
     cat1.borrow_mut().legs = 4;
@@ -59,7 +58,6 @@ fn qml_reads_list_property_through_getter() {
 
     let container = Container::default_with_attached_qobject();
     container.borrow_mut().set_kittens(vec![cat1, cat2]);
-    let container_var = container.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -78,8 +76,8 @@ fn qml_reads_list_property_through_getter() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
-        .add_initial_property("container", &container_var)
+        .set_initial_object("reporter", reporter.clone())
+        .set_initial_object("container", container.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 7, "QML should read 4 + 3 = 7 legs through the getter");
@@ -92,7 +90,6 @@ fn qml_writes_list_property_through_setter() {
     Cat::register();
 
     let container = Container::default_with_attached_qobject();
-    let container_var = container.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -107,7 +104,7 @@ fn qml_writes_list_property_through_setter() {
     "#;
 
     QApp::new()
-        .add_initial_property("container", &container_var)
+        .set_initial_object("container", container.clone())
         .load_qml(qml.as_bytes());
 
     let borrowed = container.borrow();
@@ -124,7 +121,6 @@ fn list_property_round_trips_through_getter_and_setter() {
     Cat::register();
 
     let reporter = Reporter::default_with_attached_qobject();
-    let reporter_var = reporter.borrow().as_qvariant();
 
     let cat1 = Cat::default_with_attached_qobject();
     cat1.borrow_mut().legs = 4;
@@ -133,7 +129,6 @@ fn list_property_round_trips_through_getter_and_setter() {
 
     let container = Container::default_with_attached_qobject();
     container.borrow_mut().set_kittens(vec![cat1, cat2]);
-    let container_var = container.borrow().as_qvariant();
 
     let qml = r#"
         import QtQuick
@@ -154,8 +149,8 @@ fn list_property_round_trips_through_getter_and_setter() {
     "#;
 
     QApp::new()
-        .add_initial_property("reporter", &reporter_var)
-        .add_initial_property("container", &container_var)
+        .set_initial_object("reporter", reporter.clone())
+        .set_initial_object("container", container.clone())
         .load_qml(qml.as_bytes());
 
     assert_eq!(reporter.borrow().count, 7, "QML should first read 4 + 3 = 7 legs through the getter");
