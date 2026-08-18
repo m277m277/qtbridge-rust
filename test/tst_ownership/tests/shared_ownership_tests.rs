@@ -13,7 +13,8 @@ use std::rc::{Rc, Weak};
 use qtbridge::{QApp, QmlObject, QPropertyMember, QmlElement, collect_garbage, qobject};
 use qtbridge::qtbridge_runtime::QObjectHolder;
 use qtbridge::qtbridge_type_lib::{
-    QGuiApplication, QQmlApplicationEngine, QSignalSpy, QString, QVariantMap,
+    QGuiApplication, QObject, QQmlApplicationEngine, QSignalSpy, QString, QVariant,
+    QVariantMap,
 };
 
 #[derive(Default)]
@@ -163,7 +164,9 @@ fn unreferenced_object_is_reclaimed_by_collect_garbage() {
     let weak = Rc::downgrade(&obj);
     // The pointer travels towards QML, but nothing ever wraps it: The
     // situation of a signal emitted without a connected handler.
-    let _var = obj.borrow().as_qvariant();
+    let _var = QVariant::from(&unsafe {
+        QObject::to_cxx_qt(TestObject::rc_ref_cell_to_qobject(&obj).cast_mut())
+    });
 
     drop(obj);
     // Still owned: a wrapper created later must land on a live object.
@@ -187,7 +190,10 @@ fn object_survives_engine_death() {
     {
         let mut engine = QQmlApplicationEngine::new();
         let mut props = QVariantMap::default();
-        props.insert(QString::from("testObject"), obj.borrow().as_qvariant());
+        let qobject = unsafe {
+            QObject::to_cxx_qt(TestObject::rc_ref_cell_to_qobject(&obj).cast_mut())
+        };
+        props.insert(QString::from("testObject"), QVariant::from(&qobject));
         engine.pin_mut().set_initial_properties(&props);
         engine.pin_mut().load_data(&r#"
             import QtQuick
@@ -207,9 +213,11 @@ fn object_survives_engine_death() {
     assert!(weak.upgrade().is_none());
 }
 
-fn as_qvariant_roundtrip_preserves_identity() {
+fn qvariant_roundtrip_preserves_identity() {
     let obj = TestObject::default_with_attached_qobject();
-    let var = obj.borrow().as_qvariant();
+    let var = QVariant::from(&unsafe {
+        QObject::to_cxx_qt(TestObject::rc_ref_cell_to_qobject(&obj).cast_mut())
+    });
 
     // Exercises the checked downcast from the erased allocation back to the
     // typed handle.
@@ -227,7 +235,7 @@ fn main() {
     released_object_is_reclaimed_by_handover_plus_gc();
     unreferenced_object_is_reclaimed_by_collect_garbage();
     object_survives_engine_death();
-    as_qvariant_roundtrip_preserves_identity();
+    qvariant_roundtrip_preserves_identity();
 }
 
 #[cfg(miri)]

@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 #![cfg(test)]
 
-use qtbridge_type_lib::{QGuiApplication, QQmlApplicationEngine, QVariantMap, QString};
+use qtbridge_type_lib::{QGuiApplication, QObject, QQmlApplicationEngine, QVariant, QVariantMap, QString};
 use qtbridge::{qobject, QmlObject, QmlElement};
+use qtbridge::qtbridge_runtime::QObjectHolder;
 
 #[qobject]
 pub mod widget {
@@ -63,7 +64,9 @@ fn main() {
     Widget::register();
 
     let registry = Registry::default_with_attached_qobject();
-    let registry_var = registry.borrow().as_qvariant();
+    let registry_var = QVariant::from(&unsafe {
+        QObject::to_cxx_qt(Registry::rc_ref_cell_to_qobject(&registry).cast_mut())
+    });
 
     let mut props = QVariantMap::default();
     props.insert(QString::from("registry"), registry_var);

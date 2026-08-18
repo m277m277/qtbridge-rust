@@ -1,8 +1,7 @@
 // Copyright (C) 2026 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only
 
-use cxx_qt_lib::QObjectMutPtr;
-use qtbridge_type_lib::{QObject, QVariant};
+use qtbridge_type_lib::QObject;
 use crate::QmlMethodInvoker;
 use crate::qobjectholder::QObjectHolder;
 use crate::registry::Owner;
@@ -64,14 +63,6 @@ pub trait QmlObject: QObjectHolder {
     fn get_qml_method_invoker(&self) -> QmlMethodInvoker
     {
         QmlMethodInvoker::new(self)
-    }
-
-    /// Returns a [`QVariant`] containing this object as pointer.
-    fn as_qvariant(&self) -> QVariant {
-       let qobj_ptr = self.get_qobject_ptr() as *mut cxx_qt::QObject;
-       assert!(!qobj_ptr.is_null(), "QObject is not attached");
-       let qobj_ptr_wrap = unsafe { QObjectMutPtr::from_raw(qobj_ptr) };
-       (&qobj_ptr_wrap).into()
     }
 }
 
