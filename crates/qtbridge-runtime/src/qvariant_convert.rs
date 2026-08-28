@@ -17,8 +17,17 @@ pub trait TryFromQVariant: Sized {
     fn try_from_qvariant(value: &QVariant) -> Result<Self, ()>;
 }
 
-#[doc(hidden)]
-/// Convenience trait that combines conversion to and from QVariant.
+/// A type that cross to and from QML by value.
+///
+/// This is the bound for values stored in a model role (see
+/// [`QModelItem`](crate::QModelItem)) and for value-typed properties and
+/// method arguments. Implemented for:
+/// - Primitive numeric types and `bool`
+/// - [`String`]
+/// - [`Vec<T>`] where `T` is one of the above
+///
+/// `QObject` handles (`Rc<RefCell<T>>`) are deliberately not
+/// `QVariantConvertible` as they cross as a pointer.
 pub trait QVariantConvertible: ToQVariant + TryFromQVariant {}
 impl<T: ToQVariant + TryFromQVariant> QVariantConvertible for T {}
 

@@ -7,6 +7,7 @@
 pub use qtbridge_runtime;
 pub use qtbridge_runtime::QModelItem;
 pub use qtbridge_runtime::invoke_method;
+pub use qtbridge_runtime::QVariantConvertible;
 pub use qtbridge_runtime::QMetaTypeCompatible;
 pub use qtbridge_runtime::QPropertyMember;
 pub use qtbridge_runtime::registry::collect_garbage;
