@@ -24,7 +24,7 @@ pub trait QmlElement : QObjectHolder + Default
     /// Returns the [`QMetaType`] identifying this type, unique per concrete
     /// type.
     ///
-    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// The `#[qobject]` macro overrides this with a per-type `OnceLock` body; the
     /// default serves generic types and hand-written impls.
     fn get_qmetatype() -> QMetaType {
         let iface = crate::qmetatypeforqobject::interface_for_generic::<Self>();

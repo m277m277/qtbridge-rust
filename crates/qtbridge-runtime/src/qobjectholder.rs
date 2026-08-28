@@ -42,7 +42,7 @@ where
     /// Return DynamicMetaObjectData containing information
     /// about signals/slots/properties for given Rust object.
     ///
-    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// The `#[qobject]` macro overrides this with a per-type `OnceLock` body; the
     /// default serves generic types and hand-written impls.
     fn get_shared_dynamic_meta_object_data() -> &'static DynamicMetaObjectData {
         dynamic_meta_object_data_for_generic::<Self>()
@@ -50,7 +50,7 @@ where
 
     /// Returns the [`QMetaType`] for a pointer to this type (`Self *`).
     ///
-    /// The #[qobject] macro overrides this with a per-type `OnceLock` body; the
+    /// The `#[qobject]` macro overrides this with a per-type `OnceLock` body; the
     /// default serves generic types and hand-written impls.
     fn get_qobject_ptr_qmetatype() -> QMetaType {
         let iface = crate::qmetatypeforqobject::ptr_interface_for_generic::<Self>();
