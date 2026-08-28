@@ -142,7 +142,7 @@ impl<T: QObjectHolder> QMetaTypeCompatible for Rc<RefCell<T>> {
     }
 }
 
-// The wire pointers share the in-flight guarantee of Rc<RefCell<T>> above.
+// The compatible pointers share the in-flight guarantee of Rc<RefCell<T>> above.
 impl<T: QmlElement> QMetaTypeCompatible for Vec<Rc<RefCell<T>>> {
     type CompatibleType = QObjectList;
 

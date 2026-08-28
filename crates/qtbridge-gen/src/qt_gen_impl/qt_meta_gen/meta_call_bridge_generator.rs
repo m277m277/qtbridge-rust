@@ -44,11 +44,11 @@ impl<'a> MetaCallBridgeGenerator<'a> {
     /// - Invokes the Rust function (`fn_call`).
     /// - Stores the result in the metacall parameter array if needed.
     pub fn generate_bridge_metacall_to_user_fn(&self, mut fn_call: syn::ExprMethodCall) -> syn::Result<TokenStream> {
-        // Generate code: Cast arguments to the proper wire type
+        // Generate code: Cast arguments to the proper compatible type
         let input_refs: Vec<_> = self.input_types().enumerate()
             .map(|(idx, ty)| gen_input_ref(ty, idx))
             .collect();
-        // Generate code: Convert the wire type to the proper type
+        // Generate code: Convert the compatible type to the proper type
         let input_vars: Vec<_> = self.input_types().enumerate()
             .map(|(idx, ty)| gen_input_var(ty, idx))
             .collect();
@@ -65,7 +65,7 @@ impl<'a> MetaCallBridgeGenerator<'a> {
             Some(output) => {
                 let result_var = format_ident!("result");
                 let result_conv_var = format_ident!("result_conv");
-                let result_conv = gen_to_wire(output, &result_var, &result_conv_var);
+                let result_conv = gen_to_compatible(output, &result_var, &result_conv_var);
                 let output_ptr = gen_output_ptr(output);
                 let write_output = gen_write_output(&result_conv_var);
                 quote! {
@@ -85,7 +85,7 @@ impl<'a> MetaCallBridgeGenerator<'a> {
         })
     }
 
-    /// Generates the argv array for signal emission, converting args to their wire types.
+    /// Generates the argv array for signal emission, converting args to their compatible types.
     /// The generated code lives inside the user's own signature, so the arguments must be
     /// referenced by the parameter names the user wrote.
     pub fn generate_argv_setup_for_signals(&self) -> syn::Result<TokenStream> {
@@ -151,7 +151,7 @@ fn gen_pass_expr(user_type: &syn::Type, idx: usize) -> syn::Result<syn::Expr> {
     }
 }
 
-fn gen_to_wire(user_type: &syn::Type, from: &syn::Ident, to: &syn::Ident) -> syn::Stmt {
+fn gen_to_compatible(user_type: &syn::Type, from: &syn::Ident, to: &syn::Ident) -> syn::Stmt {
     let user_type_no_ref = remove_ref(user_type);
     let ref_from = match is_ref(user_type) {
         true => quote! { #from },
