@@ -28,47 +28,56 @@ pub mod node {
             self.right = Some(value);
         }
     }
-    impl qtbridge::qtbridge_runtime::DispatchMetaCall for Node {
-        fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+    unsafe impl qtbridge::qtbridge_runtime::DispatchMetaCall for Node {
+        unsafe fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
             use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
             match slot_id {
                 _ => panic!("Unhandled slot id {slot_id}"),
             }
         }
-        fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+        unsafe fn invoke_slot_mut(
+            &mut self,
+            slot_id: u32,
+            inputs: &[*const u8],
+            outputs: &[*mut u8],
+        ) {
             use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
             match slot_id {
                 _ => panic!("Unhandled slot id {slot_id}"),
             }
         }
-        fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
+        unsafe fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
             #[allow(unused_imports)]
             use qtbridge::qtbridge_runtime::QPropertyMember;
             match prop_id {
-                1u32 => (&self.value).to_qvariant(self),
-                2u32 => (&self.get_left()).to_qvariant(self),
-                3u32 => (self.get_right()).to_qvariant(self),
+                1u32 => unsafe { (&self.value).to_qvariant(self) },
+                2u32 => unsafe { (&self.get_left()).to_qvariant(self) },
+                3u32 => unsafe { (self.get_right()).to_qvariant(self) },
                 _ => panic!("Unhandled property id {prop_id}"),
             }
         }
-        fn write_property(&mut self, prop_id: u32, value: &qtbridge::qtbridge_type_lib::QVariant) {
+        unsafe fn write_property(
+            &mut self,
+            prop_id: u32,
+            value: &qtbridge::qtbridge_type_lib::QVariant,
+        ) {
             #[allow(unused_imports)]
             use qtbridge::qtbridge_runtime::QPropertyMember;
             match prop_id {
                 1u32 => {
-                    let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                    let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                         panic!("Failed to convert QVariant for qproperty '{}'", "value");
                     };
                     self.set_value(value);
                 }
                 2u32 => {
-                    let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                    let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                         panic!("Failed to convert QVariant for qproperty '{}'", "left");
                     };
                     self.set_left(&value);
                 }
                 3u32 => {
-                    let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                    let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                         panic!("Failed to convert QVariant for qproperty '{}'", "right");
                     };
                     self.set_right(value);
@@ -77,7 +86,7 @@ pub mod node {
             }
         }
     }
-    impl qtbridge::qtbridge_runtime::QMetaInfo for Node {
+    unsafe impl qtbridge::qtbridge_runtime::QMetaInfo for Node {
         fn build_dynamic_meta_type(
             mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>,
         ) {

@@ -2,8 +2,8 @@
 source: crates/qtbridge-gen/src/qt_gen_impl/tests/qobject_meta_tests.rs
 expression: formatted
 ---
-impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
-    fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+unsafe impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
+    unsafe fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
         use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
         match slot_id {
             1u32 => self.slot_one(),
@@ -20,7 +20,7 @@ impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
             _ => panic!("Unhandled slot id {slot_id}"),
         }
     }
-    fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+    unsafe fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
         use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
         match slot_id {
             3u32 => self.slot_mut_three(),
@@ -28,22 +28,26 @@ impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
             _ => panic!("Unhandled slot id {slot_id}"),
         }
     }
-    fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
+    unsafe fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
         #[allow(unused_imports)]
         use qtbridge::qtbridge_runtime::QPropertyMember;
         match prop_id {
-            1u32 => (&self.first_value).to_qvariant_view(self, Self::this_value_changed),
-            2u32 => (&self.second_value).to_qvariant(self),
-            3u32 => (&self.third_value).to_qvariant(self),
+            1u32 => unsafe { (&self.first_value).to_qvariant_view(self, Self::this_value_changed) },
+            2u32 => unsafe { (&self.second_value).to_qvariant(self) },
+            3u32 => unsafe { (&self.third_value).to_qvariant(self) },
             _ => panic!("Unhandled property id {prop_id}"),
         }
     }
-    fn write_property(&mut self, prop_id: u32, value: &qtbridge::qtbridge_type_lib::QVariant) {
+    unsafe fn write_property(
+        &mut self,
+        prop_id: u32,
+        value: &qtbridge::qtbridge_type_lib::QVariant,
+    ) {
         #[allow(unused_imports)]
         use qtbridge::qtbridge_runtime::QPropertyMember;
         match prop_id {
             1u32 => {
-                let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                     panic!(
                         "Failed to convert QVariant for qproperty '{}'",
                         "this_value"
@@ -55,7 +59,7 @@ impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
                 }
             }
             2u32 => {
-                let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                     panic!(
                         "Failed to convert QVariant for qproperty '{}'",
                         "otherValue"
@@ -66,7 +70,7 @@ impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
                 }
             }
             3u32 => {
-                let Ok(value) = QPropertyMember::from_qvariant(value) else {
+                let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                     panic!(
                         "Failed to convert QVariant for qproperty '{}'",
                         "thirdValue"

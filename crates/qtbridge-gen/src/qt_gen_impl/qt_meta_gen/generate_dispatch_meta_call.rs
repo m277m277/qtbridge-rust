@@ -59,24 +59,24 @@ pub fn generate_dispatch_meta_call(struct_ident: &syn::Ident, generics: &syn::Ge
         .collect::<syn::Result<Vec<_>>>()?;
 
     let code = quote! {
-        impl #impl_generics qtbridge::qtbridge_runtime::DispatchMetaCall for #struct_ident #type_generics
+        unsafe impl #impl_generics qtbridge::qtbridge_runtime::DispatchMetaCall for #struct_ident #type_generics
         #where_clause
         {
-            fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+            unsafe fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
                 use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
                 match slot_id {
                     #(#slot_const_handlers),*
                     _ => panic!("Unhandled slot id {slot_id}")
                 }
             }
-            fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+            unsafe fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
                 use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
                 match slot_id {
                     #(#slot_mut_handlers),*
                     _ => panic!("Unhandled slot id {slot_id}")
                 }
             }
-            fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
+            unsafe fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
                 #[allow(unused_imports)]
                 use qtbridge::qtbridge_runtime::QPropertyMember;
                 match prop_id {
@@ -84,7 +84,7 @@ pub fn generate_dispatch_meta_call(struct_ident: &syn::Ident, generics: &syn::Ge
                     _ => panic!("Unhandled property id {prop_id}")
                 }
             }
-            fn write_property(&mut self, prop_id: u32, value: &qtbridge::qtbridge_type_lib::QVariant) {
+            unsafe fn write_property(&mut self, prop_id: u32, value: &qtbridge::qtbridge_type_lib::QVariant) {
                 #[allow(unused_imports)]
                 use qtbridge::qtbridge_runtime::QPropertyMember;
                 match prop_id {

@@ -221,8 +221,9 @@ fn qvariant_roundtrip_preserves_identity() {
 
     // Exercises the checked downcast from the erased allocation back to the
     // typed handle.
+    // SAFETY: `var` was just produced from a live `obj` in this test.
     let roundtripped: Rc<std::cell::RefCell<TestObject>> =
-        QPropertyMember::from_qvariant(&var).expect("QVariant holds a TestObject");
+        unsafe { QPropertyMember::from_qvariant(&var) }.expect("QVariant holds a TestObject");
     assert!(Rc::ptr_eq(&obj, &roundtripped));
 }
 

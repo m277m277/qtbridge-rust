@@ -25,7 +25,15 @@ pub trait QPropertyMember: Sized {
     /// `Owner` is the [`QObjectHolder`] that holds this property; passing it
     /// allows returning views onto its members and borrowing correctly on
     /// access. If the member is passed by value, `owner` can be ignored.
-    fn to_qvariant<Owner: QObjectHolder>(&self, owner: &Owner) -> QVariant;
+    ///
+    /// # Safety
+    ///
+    /// For `QObject`-backed members the returned `QVariant` carries a raw,
+    /// untracked `QObject*`: the caller must consume it and start tracking
+    /// its state immediately, before any garbage collector can run. The
+    /// metaobject dispatch upholds this by consuming the variant within
+    /// the same call stack. See [`from_qvariant`](QPropertyMember::from_qvariant).
+    unsafe fn to_qvariant<Owner: QObjectHolder>(&self, owner: &Owner) -> QVariant;
 
     /// Returns a `QVariant` view of `self` for read operations, with access to
     /// the property's notify signal. Unlike [`to_qvariant`](QPropertyMember::to_qvariant),
@@ -34,17 +42,28 @@ pub trait QPropertyMember: Sized {
     ///
     /// The default implementation ignores `notify` and falls back to
     /// [`to_qvariant`](QPropertyMember::to_qvariant).
-    fn to_qvariant_view<Owner, Notify>(&self, owner: &Owner, notify: Notify) -> QVariant
+    ///
+    /// # Safety
+    ///
+    /// Same untracked-pointer contract as [`to_qvariant`](QPropertyMember::to_qvariant).
+    unsafe fn to_qvariant_view<Owner, Notify>(&self, owner: &Owner, notify: Notify) -> QVariant
     where
         Owner: QObjectHolder,
         Notify: Fn(&mut Owner) + 'static,
     {
         let _ = notify;
-        self.to_qvariant(owner)
+        unsafe { self.to_qvariant(owner) }
     }
 
     /// Converts `value` into the concrete type, used for write operations.
-    fn from_qvariant(value: &QVariant) -> Result<Self, ()>;
+    ///
+    /// # Safety
+    ///
+    /// For `QObject`-backed members this reads a raw `QObject*` out of the
+    /// variant and dereferences it: the caller must guarantee the variant
+    /// genuinely holds a live `QObject` of a compatible type. The metaobject
+    /// dispatch upholds this (Qt type-checks the property write).
+    unsafe fn from_qvariant(value: &QVariant) -> Result<Self, ()>;
 
     /// Returns `true` if `self` and `other` are equal.
     /// Used to decide whether the notify signal should be emitted and the
@@ -57,11 +76,11 @@ impl<T: PartialEq + QMetaTypeCompatible + QVariantConvertible> QPropertyMember f
         <Self as QMetaTypeCompatible>::compatible_qmetatype()
     }
 
-    fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {
+    unsafe fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {
         ToQVariant::to_qvariant(self)
     }
 
-    fn from_qvariant(value: &QVariant) -> Result<Self, ()> {
+    unsafe fn from_qvariant(value: &QVariant) -> Result<Self, ()> {
         TryFromQVariant::try_from_qvariant(value)
     }
 
@@ -75,13 +94,13 @@ impl<T: QObjectHolder> QPropertyMember for Rc<RefCell<T>> {
         <T as QObjectHolder>::get_qobject_ptr_qmetatype()
     }
 
-    fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {
+    unsafe fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {
         let ptr = T::rc_ref_cell_to_qobject(self).cast_mut();
         let ptr_wrap = unsafe { QObjectMutPtr::from_raw(ptr.cast()) };
         (&ptr_wrap).into()
     }
 
-    fn from_qvariant(value: &QVariant) -> Result<Self, ()> {
+    unsafe fn from_qvariant(value: &QVariant) -> Result<Self, ()> {
         let ptr_wrap: QObjectMutPtr = value.value()
             .ok_or(())?;
         let ptr: *mut cxx_qt::QObject = ptr_wrap.into_raw();
@@ -98,11 +117,11 @@ impl<T: QmlElement> QPropertyMember for Vec<Rc<RefCell<T>>> {
         T::get_list_qmetatype()
     }
 
-    fn to_qvariant<Owner: QObjectHolder>(&self, owner: &Owner) -> QVariant {
+    unsafe fn to_qvariant<Owner: QObjectHolder>(&self, owner: &Owner) -> QVariant {
         T::list_to_qvariant(owner, self, |_: &mut Owner| {})
     }
 
-    fn to_qvariant_view<Owner, Notify>(&self, owner: &Owner, notify: Notify) -> QVariant
+    unsafe fn to_qvariant_view<Owner, Notify>(&self, owner: &Owner, notify: Notify) -> QVariant
     where
         Owner: QObjectHolder,
         Notify: Fn(&mut Owner) + 'static,
@@ -110,7 +129,7 @@ impl<T: QmlElement> QPropertyMember for Vec<Rc<RefCell<T>>> {
         T::list_to_qvariant(owner, self, notify)
     }
 
-    fn from_qvariant(_value: &QVariant) -> Result<Self, ()> {
+    unsafe fn from_qvariant(_value: &QVariant) -> Result<Self, ()> {
         // Vec<Rc<RefCell<T>>> is exposed as writeable view and no write operation will ever happen
         Err(())
     }

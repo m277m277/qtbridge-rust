@@ -2,7 +2,7 @@
 source: crates/qtbridge-gen/src/qt_gen_impl/tests/qobject_meta_tests.rs
 expression: formatted
 ---
-impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
+unsafe impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
     fn build_dynamic_meta_type(
         mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>,
     ) {

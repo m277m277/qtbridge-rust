@@ -27,7 +27,7 @@ pub fn generate_qmetainfo_trait_impl(ctx: &QMetaInfoContext) -> syn::Result<syn:
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
     let code = quote! {
-        impl #impl_generics qtbridge::qtbridge_runtime::QMetaInfo for #struct_ident #type_generics #where_clause {
+        unsafe impl #impl_generics qtbridge::qtbridge_runtime::QMetaInfo for #struct_ident #type_generics #where_clause {
             fn build_dynamic_meta_type(mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>) {
                 use qtbridge::qtbridge_runtime::{QMetaTypeCompatible, QMetaTypeGet, QPropertyMember};
                 use qtbridge::qtbridge_type_lib;

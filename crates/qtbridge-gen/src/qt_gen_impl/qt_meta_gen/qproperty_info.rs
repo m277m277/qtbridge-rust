@@ -241,7 +241,9 @@ impl QPropertyInfo {
     pub fn get_read_code(&self) -> syn::Result<TokenStream> {
         let value_src_ref = self.get_value_src_ref()?;
         Ok(quote! {
-            (#value_src_ref).to_qvariant(self)
+            // SAFETY: the variant is consumed by the metaobject dispatch
+            // within this call stack, never outliving the object it may point to.
+            unsafe { (#value_src_ref).to_qvariant(self) }
         })
     }
 
@@ -249,7 +251,9 @@ impl QPropertyInfo {
         let value_src_ref = self.get_value_src_ref()?;
         let signal_name = signal.get_rust_name();
         Ok(quote! {
-            (#value_src_ref).to_qvariant_view(self, Self::#signal_name)
+            // SAFETY: see get_read_code; the view variant is consumed by the
+            // metaobject dispatch within this call stack.
+            unsafe { (#value_src_ref).to_qvariant_view(self, Self::#signal_name) }
         })
     }
 
@@ -277,7 +281,9 @@ impl QPropertyInfo {
         let name = &self.name;
 
         let input_conv_code = quote! {
-            let Ok(value) = QPropertyMember::from_qvariant(value) else {
+            // SAFETY: value comes from the C++ metaobject dispatch, which
+            // type-checks the property write before handing it to us.
+            let Ok(value) = (unsafe { QPropertyMember::from_qvariant(value) }) else {
                 panic!("Failed to convert QVariant for qproperty '{}'", #name);
             };
         };

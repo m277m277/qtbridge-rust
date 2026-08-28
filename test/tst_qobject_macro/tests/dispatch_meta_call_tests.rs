@@ -30,7 +30,8 @@ use test_object::TestObject;
 #[should_panic]
 fn invoke_slot_panics_on_invalid_slot_id() {
     let obj = TestObject::default_with_attached_qobject();
-    obj.borrow_mut().invoke_slot(0, &[], &[]);
+    // SAFETY: invalid id 0 panics before any argument pointer is touched.
+    unsafe { obj.borrow_mut().invoke_slot(0, &[], &[]); }
 }
 
 #[test]
@@ -38,7 +39,8 @@ fn invoke_slot_panics_on_invalid_slot_id() {
 #[should_panic]
 fn read_property_panics_on_invalid_property_id() {
     let obj = TestObject::default_with_attached_qobject();
-    obj.borrow().read_property(0);
+    // SAFETY: invalid id 0 panics before any pointer is touched.
+    unsafe { obj.borrow().read_property(0); }
 }
 
 #[test]
@@ -46,5 +48,6 @@ fn read_property_panics_on_invalid_property_id() {
 #[should_panic]
 fn write_property_panics_on_invalid_property_id() {
     let obj = TestObject::default_with_attached_qobject();
-    obj.borrow_mut().write_property(0, &QVariant::default());
+    // SAFETY: invalid id 0 panics before the QVariant is inspected.
+    unsafe { obj.borrow_mut().write_property(0, &QVariant::default()); }
 }

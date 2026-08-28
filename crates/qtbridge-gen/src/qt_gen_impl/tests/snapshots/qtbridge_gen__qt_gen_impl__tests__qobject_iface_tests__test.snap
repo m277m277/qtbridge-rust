@@ -14,27 +14,36 @@ mod some_module {
             1
         }
     }
-    impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
-        fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+    unsafe impl qtbridge::qtbridge_runtime::DispatchMetaCall for SomeStruct {
+        unsafe fn invoke_slot(&self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
             use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
             match slot_id {
                 _ => panic!("Unhandled slot id {slot_id}"),
             }
         }
-        fn invoke_slot_mut(&mut self, slot_id: u32, inputs: &[*const u8], outputs: &[*mut u8]) {
+        unsafe fn invoke_slot_mut(
+            &mut self,
+            slot_id: u32,
+            inputs: &[*const u8],
+            outputs: &[*mut u8],
+        ) {
             use qtbridge::qtbridge_runtime::QMetaTypeCompatible;
             match slot_id {
                 _ => panic!("Unhandled slot id {slot_id}"),
             }
         }
-        fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
+        unsafe fn read_property(&self, prop_id: u32) -> qtbridge::qtbridge_type_lib::QVariant {
             #[allow(unused_imports)]
             use qtbridge::qtbridge_runtime::QPropertyMember;
             match prop_id {
                 _ => panic!("Unhandled property id {prop_id}"),
             }
         }
-        fn write_property(&mut self, prop_id: u32, value: &qtbridge::qtbridge_type_lib::QVariant) {
+        unsafe fn write_property(
+            &mut self,
+            prop_id: u32,
+            value: &qtbridge::qtbridge_type_lib::QVariant,
+        ) {
             #[allow(unused_imports)]
             use qtbridge::qtbridge_runtime::QPropertyMember;
             match prop_id {
@@ -42,7 +51,7 @@ mod some_module {
             }
         }
     }
-    impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
+    unsafe impl qtbridge::qtbridge_runtime::QMetaInfo for SomeStruct {
         fn build_dynamic_meta_type(
             mut meta_obj: std::pin::Pin<&mut qtbridge::qtbridge_runtime::DynamicMetaObjectBuilder>,
         ) {
