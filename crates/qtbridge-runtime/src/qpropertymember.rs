@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use qtbridge_type_lib::{QMetaType, QObjectMutPtr, QVariant};
 
-use crate::{QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlElement, ToQVariant, TryFromQVariant};
+use crate::{QMetaTypeCompatible, QObjectHolder, QVariantConvertible, QmlElement};
 
 /// Enables a type to be used as a property.
 ///
@@ -77,11 +77,11 @@ impl<T: PartialEq + QMetaTypeCompatible + QVariantConvertible> QPropertyMember f
     }
 
     unsafe fn to_qvariant<Owner: QObjectHolder>(&self, _owner: &Owner) -> QVariant {
-        ToQVariant::to_qvariant(self)
+        QVariantConvertible::to_qvariant(self)
     }
 
     unsafe fn from_qvariant(value: &QVariant) -> Result<Self, ()> {
-        TryFromQVariant::try_from_qvariant(value)
+        QVariantConvertible::try_from_qvariant(value)
     }
 
     fn property_eq(&self, other: &Self) -> bool {

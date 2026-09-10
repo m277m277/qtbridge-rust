@@ -37,7 +37,7 @@ pub use qml_method_invoker::QmlMethodInvoker;
 pub use qmodelitem::QModelItem;
 pub use qmetatype_compatible::QMetaTypeCompatible;
 pub use qpropertymember::{QPropertyMember, get_meta_type_of_fn_return_value};
-pub use qvariant_convert::{QVariantConvertible, ToQVariant, TryFromQVariant};
+pub use qvariant_convert::{QVariantConvertible};
 pub use registry::{live_count as live_object_count, live_proxy_count};
 
 #[cfg(feature = "linkme")]

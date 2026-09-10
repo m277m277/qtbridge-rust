@@ -5,9 +5,9 @@ use std::collections::HashMap;
 
 use qtbridge_type_lib::QVariant;
 
-use crate::{QVariantConvertible, ToQVariant, TryFromQVariant};
+use crate::{QVariantConvertible};
 
-fn option_to_qvariant<T: ToQVariant>(value: Option<&T>) -> QVariant {
+fn option_to_qvariant<T: QVariantConvertible>(value: Option<&T>) -> QVariant {
     value.map(<T>::to_qvariant)
             .unwrap_or_default()
 }
