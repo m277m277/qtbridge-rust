@@ -54,5 +54,13 @@ fn main() {
 
     builder.compile("qtbridge-type-lib");
 
+    // Force-link cxx-qt init functions. See src/cxx_qt_init.cpp for details.
+    cc::Build::new()
+        .cpp(true)
+        .file("src/cxx_qt_init.cpp")
+        .cargo_metadata(false)
+        .compile("qtbridge-cxx-qt-init");
+    println!("cargo::rustc-link-lib=static:+whole-archive=qtbridge-cxx-qt-init");
+
     qt.link_modules(qt_modules);
 }

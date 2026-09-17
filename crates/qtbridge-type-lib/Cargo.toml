@@ -17,5 +17,6 @@ cxx-qt.workspace = true
 cxx-qt-lib.workspace = true
 
 [build-dependencies]
+cc = "1"
 cxx-build.workspace = true
 qtbridge-build-utils = { workspace = true }
