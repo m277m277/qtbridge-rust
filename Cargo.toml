@@ -33,9 +33,6 @@ qtbridge = { path = "crates/qtbridge", version = "0.2.0" }
 resolver = "2"
 
 members = [
-    "code_gen/qt_type_gen",
-    "code_gen/qt_type_gen_lib",
-
     "crates/qtbridge",
     "crates/qtbridge-build-utils",
     "crates/qtbridge-gen-common",
